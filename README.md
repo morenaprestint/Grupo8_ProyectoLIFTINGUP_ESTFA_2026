@@ -14,9 +14,10 @@ almacenamiento de registros históricos de entrenamiento y al desarrollo de inte
 enfocadas en la visualización de datos.
 
 Roles del grupo:
-UX : Morena Rocco 
-DBA: Ludmila Biondi 
-DEV: Maximo Paz 
+
+UX : Morena Rocco
+DBA: Ludmila Biondi
+DEV: Maximo Paz
 PM: Morena Prestint 
 
 Lenguaje de programacion a utilizar:
