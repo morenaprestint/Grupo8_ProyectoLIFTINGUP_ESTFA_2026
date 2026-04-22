@@ -1,4 +1,4 @@
-PROYECTO GYMTRACK - Grupo 8
+PROYECTO LIFTING UP - Grupo 8
 
 Descripcion del proyecto:
 El proyecto consiste en el desarrollo de una aplicación móvil destinada a la digitalización de rutinas 
