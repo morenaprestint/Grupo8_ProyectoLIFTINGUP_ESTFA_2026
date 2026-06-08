@@ -19,7 +19,8 @@ Roles del grupo:
 UX : Morena Rocco,
 DBA: Ludmila Biondi,
 DEV: Maximo Paz,
-PM: Morena Prestint 
+PM: Morena Prestint,
+TESTER: Morena Rocco
 
 Lenguaje de programacion a utilizar:
 HTML, CSS, JAVAscript, SQL, Phyton
