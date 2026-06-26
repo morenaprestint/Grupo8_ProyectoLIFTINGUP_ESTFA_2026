@@ -1,0 +1,633 @@
+/* ══════════════════════════════════════════════
+   LIFTING UP — ADMIN DASHBOARD — PALETA OFICIAL
+   ══════════════════════════════════════════════ */
+
+/* Las variables CSS ya están definidas en index.css */
+
+/* ════════════════════════════
+   LAYOUT GENERAL
+   ════════════════════════════ */
+.admin-page {
+  display: flex;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 10% 10%, rgba(140, 88, 211, 0.12) 0%, transparent 50%),
+              radial-gradient(ellipse at 90% 90%, rgba(95, 181, 224, 0.08) 0%, transparent 50%),
+              #030110;
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ════════════════════════════
+   SIDEBAR
+   ════════════════════════════ */
+.sidebar {
+  width: 230px;
+  background: rgba(15, 10, 40, 0.95);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  border-right: 1px solid rgba(140, 88, 211, 0.18);
+  flex-shrink: 0;
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-logo {
+  text-align: center;
+  margin-bottom: 32px;
+  padding: 0 16px;
+}
+
+.sidebar-logo img {
+  width: 70px;
+  filter: drop-shadow(0 0 14px rgba(140, 88, 211, 0.4));
+}
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.nav-item {
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-item:hover {
+  background: rgba(140, 88, 211, 0.12);
+  color: var(--text-main);
+}
+
+.nav-item-activo {
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--violet), #6e3ab8);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(140, 88, 211, 0.4);
+}
+
+.sidebar-logout {
+  margin: 16px 12px 0;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid rgba(140, 88, 211, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.sidebar-logout:hover {
+  border-color: var(--violet);
+  color: var(--text-main);
+  background: rgba(140, 88, 211, 0.08);
+}
+
+/* ════════════════════════════
+   CONTENIDO PRINCIPAL
+   ════════════════════════════ */
+.admin-content {
+  flex: 1;
+  padding: 32px 36px;
+  overflow-x: auto;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.admin-titulo {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0;
+  background: linear-gradient(135deg, var(--text-main), var(--celeste));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.admin-subtitulo {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  font-weight: 400;
+}
+
+/* ── Botón "Nuevo Usuario" ── */
+.btn-nuevo {
+  padding: 11px 22px;
+  background: linear-gradient(135deg, var(--violet), var(--celeste));
+  border: none;
+  border-radius: 99px;
+  color: #ffffff;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  font-size: 14px;
+  transition: opacity 0.2s, box-shadow 0.2s, transform 0.15s;
+  box-shadow: 0 4px 18px rgba(140, 88, 211, 0.38);
+  letter-spacing: 0.3px;
+}
+
+.btn-nuevo:hover {
+  opacity: 0.88;
+  box-shadow: 0 6px 26px rgba(140, 88, 211, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-nuevo:active {
+  transform: translateY(0);
+}
+
+/* ════════════════════════════
+   BUSCADOR
+   ════════════════════════════ */
+.buscador {
+  width: 100%;
+  max-width: 420px;
+  padding: 11px 18px;
+  background: rgba(20, 14, 55, 0.75);
+  border: 1px solid rgba(140, 88, 211, 0.25);
+  border-radius: var(--radius);
+  color: var(--text-main);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  margin-bottom: 24px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.buscador::placeholder {
+  color: var(--text-muted);
+}
+
+.buscador:focus {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px rgba(219, 15, 229, 0.12);
+  background: rgba(219, 15, 229, 0.05);
+}
+
+/* ════════════════════════════
+   TABLA
+   ════════════════════════════ */
+.tabla-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid rgba(140, 88, 211, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 780px;
+}
+
+.tabla thead {
+  background: rgba(140, 88, 211, 0.12);
+}
+
+.tabla th {
+  padding: 13px 16px;
+  text-align: left;
+  font-size: 11px;
+  color: var(--celeste);
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(140, 88, 211, 0.20);
+  white-space: nowrap;
+}
+
+.tabla tr {
+  border-bottom: 1px solid rgba(140, 88, 211, 0.08);
+  transition: background 0.15s;
+}
+
+.tabla tbody tr:hover {
+  background: rgba(140, 88, 211, 0.07);
+}
+
+.tabla td {
+  padding: 13px 16px;
+  font-size: 14px;
+  color: var(--text-main);
+  font-weight: 400;
+  vertical-align: middle;
+}
+
+/* ── Badge estado ── */
+.badge-estado {
+  display: inline-block;
+  padding: 4px 11px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.badge-estado.activo {
+  background: rgba(95, 181, 224, 0.15);
+  color: var(--celeste);
+  border: 1px solid rgba(95, 181, 224, 0.30);
+}
+
+.badge-estado.inactivo {
+  background: rgba(255, 178, 180, 0.12);
+  color: #FFB2B4;
+  border: 1px solid rgba(161, 13, 16, 0.30);
+}
+
+/* ── Celda vacía ── */
+.tabla-vacio {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px !important;
+  font-style: italic;
+}
+
+/* ════════════════════════════
+   BOTONES DE ACCIÓN EN TABLA
+   ════════════════════════════ */
+.btn-ver {
+  padding: 5px 13px;
+  background: var(--btn-ver-bg);
+  border: 1px solid var(--btn-ver-brd);
+  border-radius: 6px;
+  color: var(--btn-ver-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin-right: 6px;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-editar {
+  padding: 5px 13px;
+  background: var(--btn-edit-bg);
+  border: 1px solid var(--btn-edit-brd);
+  border-radius: 6px;
+  color: var(--btn-edit-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin-right: 6px;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-eliminar {
+  padding: 5px 13px;
+  background: var(--btn-del-bg);
+  border: 1px solid var(--btn-del-brd);
+  border-radius: 6px;
+  color: var(--btn-del-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-ver:hover,
+.btn-editar:hover,
+.btn-eliminar:hover {
+  opacity: 0.78;
+  transform: translateY(-1px);
+}
+
+/* ════════════════════════════
+   OVERLAY Y MODAL
+   ════════════════════════════ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 1, 16, 0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeInOverlay 0.18s ease;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  background: rgba(12, 8, 35, 0.98);
+  border: 1px solid rgba(140, 88, 211, 0.30);
+  border-radius: 18px;
+  padding: 32px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(95, 181, 224, 0.06);
+  animation: slideUpModal 0.22s ease;
+}
+
+@keyframes slideUpModal {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-sm {
+  max-width: 420px;
+}
+
+.modal-titulo {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 24px 0;
+  background: linear-gradient(135deg, var(--text-main), var(--celeste));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Grid de formulario ── */
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* ── Inputs del modal ── */
+.input-modal {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(20, 14, 55, 0.80);
+  border: 1px solid rgba(140, 88, 211, 0.22);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  margin-bottom: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.input-modal::placeholder {
+  color: var(--text-muted);
+}
+
+.input-modal:focus {
+  border-color: var(--violet-focus-brd);
+  background: var(--violet-focus-bg);
+  box-shadow: 0 0 0 3px rgba(219, 15, 229, 0.12);
+}
+
+.input-modal option {
+  background: #0e0930;
+  color: var(--text-main);
+}
+
+/* ── Contraseña sugerida ── */
+.password-preview {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: -6px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: rgba(140, 88, 211, 0.08);
+  border-radius: 6px;
+  border-left: 3px solid var(--violet);
+}
+
+.password-preview b {
+  color: var(--violet);
+  font-weight: 700;
+}
+
+/* ── Botones del modal ── */
+.modal-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.btn-cancelar {
+  padding: 10px 22px;
+  background: transparent;
+  border: 1px solid rgba(140, 88, 211, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.btn-cancelar:hover {
+  border-color: var(--violet);
+  color: var(--text-main);
+  background: rgba(140, 88, 211, 0.08);
+}
+
+.btn-guardar {
+  padding: 10px 26px;
+  background: linear-gradient(135deg, var(--violet), var(--celeste));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s, box-shadow 0.2s, transform 0.15s;
+  box-shadow: 0 4px 16px rgba(140, 88, 211, 0.35);
+}
+
+.btn-guardar:hover {
+  opacity: 0.88;
+  box-shadow: 0 6px 24px rgba(140, 88, 211, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-eliminar-confirm {
+  padding: 10px 26px;
+  background: var(--btn-del-bg);
+  border: 1px solid var(--btn-del-brd);
+  border-radius: var(--radius-sm);
+  color: var(--btn-del-text);
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-eliminar-confirm:hover {
+  opacity: 0.82;
+  transform: translateY(-1px);
+}
+
+/* ════════════════════════════
+   DETALLE USUARIO
+   ════════════════════════════ */
+.detalle-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.detalle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(140, 88, 211, 0.10);
+}
+
+.detalle-row:last-child {
+  border-bottom: none;
+}
+
+.detalle-label {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.detalle-valor {
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  max-width: 60%;
+}
+
+/* ════════════════════════════
+   CONFIRMAR ELIMINAR
+   ════════════════════════════ */
+.confirm-texto {
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.confirm-texto b {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+/* ════════════════════════════
+   BADGE CONTRASEÑA
+   ════════════════════════════ */
+.badge-password {
+  background: rgba(140, 88, 211, 0.10);
+  border: 1px solid rgba(140, 88, 211, 0.30);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--violet);
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+/* ════════════════════════════
+   SELECTOR DE ROL (Tabs)
+   ════════════════════════════ */
+.rol-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.rol-tab {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 99px;
+  border: 1px solid rgba(140, 88, 211, 0.25);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.rol-tab:hover {
+  border-color: var(--violet);
+  color: var(--text-main);
+  background: rgba(140, 88, 211, 0.08);
+}
+
+.rol-tab.activo {
+  background: var(--btn-active);
+  border-color: var(--violet);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 12px rgba(195, 7, 205, 0.3);
+}
+
+/* ════════════════════════════
+   NOTIFICACIONES TOAST
+   ════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  padding: 12px 22px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  z-index: 9999;
+  animation: toastIn 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.toast.success {
+  background: rgba(16, 132, 41, 0.90);
+  border: 1px solid var(--btn-edit-brd);
+  color: #D8FFE3;
+}
+
+.toast.error {
+  background: rgba(161, 13, 16, 0.90);
+  border: 1px solid var(--btn-del-brd);
+  color: #FFB2B4;
+}
+
+@keyframes toastIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}

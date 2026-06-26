@@ -1,0 +1,231 @@
+/* ══════════════════════════════════════════════
+   LIFTING UP — PALETA OFICIAL
+   ══════════════════════════════════════════════
+   Fondo principal:     #030110 (87% opacidad)
+   Botones generales:   #555555
+   Texto principal:     #D8ECF8
+   Texto en botones:    #7F7F7F
+   Violeta/marca:       #8C58D3
+   Celeste:             #5FB5E0
+   ══════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --bg-main:          rgba(3, 1, 16, 0.87);
+  --bg-solid:         #030110;
+  --bg-card:          rgba(15, 10, 40, 0.90);
+  --bg-input:         rgba(20, 14, 55, 0.80);
+
+  --violet:           #8C58D3;
+  --violet-active:    rgba(195, 7, 205, 0.66);
+  --violet-focus-bg:  rgba(219, 15, 229, 0.37);
+  --violet-focus-brd: #9B0DBF;
+
+  --celeste:          #5FB5E0;
+
+  --text-main:        #D8ECF8;
+  --text-muted:       #7F7F7F;
+  --text-dim:         #5a5a7a;
+
+  --btn-general-bg:   #555555;
+  --btn-general-text: #7F7F7F;
+
+  --btn-ver-bg:       rgba(112, 147, 234, 0.50);
+  --btn-ver-brd:      #151DB7;
+  --btn-ver-text:     #151DB7;
+
+  --btn-edit-bg:      rgba(216, 255, 227, 0.50);
+  --btn-edit-brd:     #108429;
+  --btn-edit-text:    #108429;
+
+  --btn-del-bg:       #FFB2B4;
+  --btn-del-brd:      #A10D10;
+  --btn-del-text:     #A10D10;
+
+  --btn-active:       rgba(195, 7, 205, 0.66);
+
+  --eye-text:         #5871FD;
+
+  --border-subtle:    rgba(140, 88, 211, 0.18);
+  --border-card:      rgba(95, 181, 224, 0.12);
+  --radius:           12px;
+  --radius-sm:        8px;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  background-color: var(--bg-solid);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--violet); border-radius: 99px; }
+
+/* ════════════════════════════
+   LOGIN
+   ════════════════════════════ */
+.login-container {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 30% 20%, rgba(140, 88, 211, 0.18) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 80%, rgba(95, 181, 224, 0.12) 0%, transparent 55%),
+              var(--bg-solid);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.logo-section {
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.logo-img {
+  width: 260px;
+  max-width: 85%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgba(140, 88, 211, 0.35));
+}
+
+.form-section {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ─── Input wrapper con borde degradado ─── */
+.input-wrapper {
+  position: relative;
+  border-radius: var(--radius);
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--violet), var(--celeste));
+  margin-bottom: 20px;
+}
+
+.input-wrapper.blue {
+  background: linear-gradient(135deg, var(--celeste), var(--violet));
+}
+
+.input-inner {
+  background-color: rgba(20, 14, 55, 0.95);
+  border-radius: calc(var(--radius) - 1.5px);
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.input-field {
+  width: 100%;
+  height: 56px;
+  background: transparent;
+  border: none;
+  padding: 0 48px 0 18px;
+  color: var(--text-main);
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+/* ─── Label flotante ─── */
+.input-label {
+  position: absolute;
+  top: 8px;
+  left: 18px;
+  font-size: 11px;
+  color: var(--celeste);
+  pointer-events: none;
+  font-weight: 500;
+}
+
+.input-field.has-label {
+  padding-top: 18px;
+  height: 62px;
+}
+
+/* ─── Ícono ojo ─── */
+.eye-icon {
+  position: absolute;
+  right: 16px;
+  font-size: 14px;
+  color: var(--eye-text);
+  cursor: pointer;
+  user-select: none;
+  padding: 8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* ─── Botón submit ─── */
+.submit-btn {
+  width: 100%;
+  height: 58px;
+  margin-top: 16px;
+  background: linear-gradient(90deg, var(--celeste) 0%, var(--violet) 100%);
+  border: none;
+  border-radius: 40px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 24px rgba(140, 88, 211, 0.35);
+}
+
+.submit-btn:hover {
+  opacity: 0.88;
+  box-shadow: 0 6px 32px rgba(140, 88, 211, 0.55);
+}
+
+.submit-btn:active {
+  transform: scale(0.97);
+}
+
+/* ─── Error ─── */
+.error-text {
+  color: #ff6b6b;
+  font-size: 13px;
+  margin-bottom: 10px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.signup-text {
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.signup-link {
+  color: var(--celeste);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 4px;
+  text-decoration: none;
+}
