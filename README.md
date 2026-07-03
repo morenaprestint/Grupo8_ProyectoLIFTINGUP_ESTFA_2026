@@ -1,5 +1,3 @@
-
-
 PROYECTO LIFTING UP - Grupo 8
 
 Descripcion del proyecto:
