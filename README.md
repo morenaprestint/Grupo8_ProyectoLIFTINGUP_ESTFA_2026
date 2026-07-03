@@ -25,3 +25,10 @@ HTML, CSS, JAVAscript, SQL, Phyton
 
 Color del grupo:
 Azul
+
+Planning 02/07
+  - Investigar API de comida
+  - Investigar libreria con gráficos 
+  - Verificación de mail
+  - Mock up verificación de mail 
+  - Medidas de pantalla
