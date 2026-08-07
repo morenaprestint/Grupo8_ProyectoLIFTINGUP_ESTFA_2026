@@ -26,9 +26,12 @@ HTML, CSS, JAVAscript, SQL, Phyton
 Color del grupo:
 Azul
 
-Planning 02/07
-  - Investigar API de comida
-  - Investigar libreria con gráficos 
-  - Verificación de mail
-  - Mock up verificación de mail 
+Planning 07/08
+  - Desarrollar vista del atleta
+  - Empezar con el armado de rutina 
+  - Pantalla del calendario
+  - Pantalla de asistencia
+  - Testing
   - Medidas de pantalla
+  - GANNT
+  - Daylist
