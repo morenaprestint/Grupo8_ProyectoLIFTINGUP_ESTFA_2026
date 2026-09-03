@@ -1,0 +1,424 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Khula:wght@400;600;700&display=swap');
+
+/* Base Page Style matching strict palette */
+.attendance-page {
+  background-color: rgba(3, 1, 16, 0.87); 
+  min-height: 100vh;
+  width: 100%;
+  color: #D8ECF8;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Layout overrides to ensure we respect admin-layout if it's there */
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.desktop-sidebar-wrapper {
+  display: none; /* hidden on mobile */
+}
+
+.attendance-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  background-color: transparent;
+}
+
+/* Centered Content */
+.attendance-main-logo {
+  width: 140px;
+  height: auto;
+  object-fit: contain;
+  margin: 20px auto 10px auto;
+  display: block;
+}
+
+.attendance-content-centered {
+  flex: 1;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 24px 24px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 30px;
+  color: #D8ECF8;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Cards */
+.attendance-card {
+  background-color: transparent;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid #555555; /* Secondary grey */
+}
+
+.card-title {
+  font-size: 20px;
+  font-family: 'Khula', sans-serif;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #D8ECF8;
+}
+
+/* Weekly Section */
+.weekly-days {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.day-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.day-name {
+  font-size: 14px;
+  color: #D8ECF8;
+}
+
+.status-icon {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.weekly-subtext {
+  text-align: center;
+  font-size: 16px;
+  font-family: 'Khula', sans-serif;
+  color: #D8ECF8;
+  margin-bottom: 20px;
+}
+
+/* Main Button */
+.btn-mark-attendance {
+  width: 100%;
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid #555555;
+  background-color: transparent; 
+  color: #8C58D3;
+  font-family: 'Khula', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-mark-attendance:hover {
+  background-color: rgba(140, 88, 211, 0.1);
+  border-color: #8C58D3;
+}
+
+.btn-mark-attendance:active {
+  transform: scale(0.98);
+}
+
+.btn-mark-attendance:disabled {
+  color: #555555;
+  border-color: #555555;
+  cursor: not-allowed;
+}
+
+/* Confirmation Box */
+.confirmation-box {
+  background-color: transparent;
+  border-radius: 12px;
+  border: 1px solid #9B0DBF; 
+  padding: 16px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.confirmation-box h3 {
+  font-size: 20px;
+  font-family: 'Khula', sans-serif;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #D8ECF8;
+}
+
+.confirm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.btn-confirm {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Khula', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: transparent;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.btn-confirm.yes {
+  border: 1px solid #2ECC71;
+  color: #2ECC71;
+}
+
+.btn-confirm.yes:hover {
+  background-color: rgba(46, 204, 113, 0.15);
+}
+
+.btn-confirm.no {
+  border: 1px solid #E74C3C;
+  color: #E74C3C;
+}
+
+.btn-confirm.no:hover {
+  background-color: rgba(231, 76, 60, 0.15);
+}
+
+.btn-confirm.cancel {
+  border: 1px solid #555;
+  color: #D8ECF8;
+}
+
+.btn-confirm svg {
+  width: 20px;
+  height: 20px;
+}
+
+.help-text {
+  font-size: 15px;
+  font-family: 'Khula', sans-serif;
+  color: #D8ECF8;
+  margin: 0;
+}
+
+/* Monthly Section */
+.monthly-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  font-family: 'Khula', sans-serif;
+  color: #D8ECF8;
+  margin-bottom: 20px;
+}
+
+.monthly-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  justify-items: center;
+}
+
+.grid-day {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.grid-day.pending, .grid-day.no {
+  border: 1px solid #555555;
+  background-color: transparent;
+}
+
+.grid-day.yes {
+  background-color: #8C58D3; /* Violet característico */
+  border: 1px solid #C307CD;
+}
+
+.grid-day:hover {
+  border-color: #9B0DBF;
+}
+
+/* Mini modal within Monthly Section */
+.monthly-day-modal {
+  margin-top: 20px;
+  padding: 16px;
+  background-color: rgba(13, 1, 16, 0.87);
+  border: 1px solid #9B0DBF;
+  border-radius: 12px;
+  text-align: center;
+  animation: fadeIn 0.2s ease-out;
+}
+.monthly-day-modal h3 {
+  color: #D8ECF8;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+/* Navbar Spacer */
+.navbar-spacer-mobile {
+  height: 90px;
+}
+
+/* Bottom Navbar */
+.bottom-navbar.mobile-only {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  min-height: 82px;
+  background: rgba(15, 10, 40, 0.97);
+  border-top: 1px solid rgba(140, 88, 211, 0.62);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(12px);
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding: 8px 4px 6px;
+  box-sizing: border-box;
+  z-index: 100;
+}
+
+.nav-item {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 1px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(216, 236, 248, 0.66);
+  cursor: pointer;
+  font-size: 8px;
+  line-height: 1.05;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  color: #D8ECF8;
+}
+
+.nav-icon-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.nav-item.active .nav-icon-img {
+  opacity: 1;
+  filter: brightness(1.2);
+}
+
+.fallback-svg {
+  width: 22px;
+  height: 22px;
+  display: none;
+}
+
+.nav-item.active {
+  color: #D8ECF8;
+  background: rgba(219, 15, 229, 0.37);
+  border-color: #9b0dbf;
+}
+
+.nav-item.active span {
+  font-weight: 500;
+}
+
+/* RESPONSIVE MEDIA QUERIES */
+@media (min-width: 768px) {
+  /* En PC */
+  .desktop-sidebar-wrapper {
+    display: block;
+    width: 250px; 
+    flex-shrink: 0;
+    /* This assumes admin-sidebar takes care of its own width, we just give it space */
+  }
+  
+  .mobile-only {
+    display: none !important;
+  }
+  
+  .attendance-main {
+    padding: 20px;
+    align-items: flex-start;
+  }
+  
+  .attendance-content-centered {
+    margin: 0;
+    max-width: 800px; /* Wider for PC */
+    align-items: flex-start;
+    padding: 0;
+  }
+
+  .attendance-topbar {
+    justify-content: flex-end; /* Logo is in sidebar */
+    padding: 0 0 20px 0;
+    width: 100%;
+  }
+  
+  .page-title {
+    text-align: left;
+    margin-bottom: 40px;
+    font-size: 28px;
+    align-self: flex-start;
+  }
+  
+  .attendance-card {
+    width: 100%;
+    max-width: 600px; /* Limit width even on PC */
+  }
+  
+  .monthly-grid {
+    grid-template-columns: repeat(7, 40px);
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  
+  .grid-day {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .navbar-spacer-mobile {
+    display: none;
+  }
+}
