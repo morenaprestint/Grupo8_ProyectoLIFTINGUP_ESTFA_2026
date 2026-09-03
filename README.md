@@ -15,7 +15,6 @@ Planning 07/08
 - Empezar con el armado de rutina
 - Pantalla del calendario
 - Pantalla de asistencia
-- Testing
 - Medidas de pantalla
 - GANNT
 - Daylist
