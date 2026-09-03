@@ -1,0 +1,265 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+/* Reset and Base Setup */
+.verify-email-container {
+    background-color: #030110;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    color: #D8ECF8;
+    font-family: 'Inter', sans-serif;
+    padding: 24px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+/* Centered Content Wrapper (Adapts to Mobile and PC) */
+.verify-content {
+    width: 100%;
+    max-width: 430px; /* Mobile width constraint, expands cleanly in PC via centering */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 40px;
+}
+
+/* Header */
+.verify-header {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.verify-back-btn {
+    position: absolute;
+    left: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.verify-back-icon {
+    width: 24px;
+    height: 24px;
+    filter: brightness(0) invert(1);
+}
+
+.verify-logo {
+    width: 120px; /* Scalable logo */
+    height: auto;
+    object-fit: contain;
+}
+
+.perfil-btn-top {
+    position: absolute;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: none;
+    border: none;
+    color: #D8ECF8;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.perfil-btn-top .perfil-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #555555;
+    margin-bottom: 4px;
+    object-fit: cover;
+}
+
+.verify-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 16px 0 32px 0;
+    color: #D8ECF8;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+/* Main Card */
+.verify-box {
+    background-color: transparent;
+    border: 1px solid #555555;
+    border-radius: 16px;
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 450px; /* Controlled max-width for PC */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Email Icon */
+.email-icon-large {
+    width: 100px;
+    height: 80px;
+    margin-bottom: 24px;
+    object-fit: contain;
+    /* Simulate a violet glow if it's a transparent PNG */
+    filter: drop-shadow(0 0 10px rgba(195, 7, 205, 0.3));
+}
+
+.verify-instructions {
+    text-align: center;
+    font-size: 15px;
+    color: #D8ECF8;
+    margin-bottom: 32px;
+    line-height: 1.5;
+    max-width: 280px;
+}
+
+/* Input Code */
+.code-input {
+    width: 100%;
+    max-width: 250px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid #555555;
+    border-radius: 8px;
+    padding: 14px;
+    color: #D8ECF8;
+    font-size: 18px;
+    text-align: center;
+    letter-spacing: 8px;
+    margin-bottom: 32px;
+    transition: all 0.2s ease;
+}
+
+.code-input:focus {
+    outline: none;
+    border-color: #DB0FE5;
+    background-color: rgba(219, 15, 229, 0.05);
+    box-shadow: 0 0 8px rgba(219, 15, 229, 0.3);
+}
+
+.code-input::placeholder {
+    color: #7F7F7F;
+    letter-spacing: normal;
+}
+
+/* Main Button */
+.continue-btn {
+    background: linear-gradient(90deg, #8C58D3, #DB0FE5); /* Gradient Violet/Pink */
+    color: #FFF;
+    border: none;
+    border-radius: 20px;
+    padding: 14px;
+    width: 100%;
+    max-width: 220px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(219, 15, 229, 0.2);
+}
+
+.continue-btn:hover {
+    box-shadow: 0 6px 20px rgba(219, 15, 229, 0.4);
+    transform: translateY(-1px);
+}
+
+.continue-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Footer / Resend */
+.resend-section {
+    margin-top: 32px;
+    font-size: 15px;
+    color: #D8ECF8;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+}
+
+.resend-btn {
+    background: none;
+    border: none;
+    color: #DB0FE5; /* Pink accent */
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0;
+    transition: text-shadow 0.2s;
+}
+
+.resend-btn:hover {
+    text-shadow: 0 0 8px rgba(219, 15, 229, 0.5);
+}
+
+.resend-btn:disabled {
+    color: #7F7F7F;
+    cursor: not-allowed;
+    text-shadow: none;
+}
+
+/* Alerts */
+.error-message {
+    color: #ffb2b4;
+    font-size: 14px;
+    margin-bottom: 20px;
+    text-align: center;
+    background: rgba(161, 13, 16, 0.18);
+    border: 1px solid rgba(161, 13, 16, 0.65);
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 250px;
+}
+
+.success-message {
+    color: #b9f4ff;
+    font-size: 14px;
+    margin-bottom: 20px;
+    text-align: center;
+    background: rgba(95, 181, 224, 0.16);
+    border: 1px solid rgba(95, 181, 224, 0.5);
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 250px;
+}
+
+/* RESPONSIVE DESKTOP ADJUSTMENTS */
+@media (min-width: 768px) {
+    .verify-content {
+        max-width: 600px;
+        justify-content: center;
+    }
+    
+    .verify-header {
+        margin-bottom: 30px;
+    }
+
+    .verify-logo {
+        width: 150px;
+    }
+
+    .verify-title {
+        font-size: 28px;
+    }
+
+    .verify-box {
+        padding: 40px 32px;
+    }
+}
