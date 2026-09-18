@@ -44,7 +44,7 @@ function AtletaDashboard({ vista }) {
                 {/* De momento, AtletaNavbar ya está configurado con rutas, y las que no existen podemos interceptarlas o las controlamos en App.jsx */}
                 <AtletaNavbar onLogout={handleLogout} moduloPendiente={moduloPendiente} />
 
-                <div className="admin-main">
+                <div className="admin-main atleta-main main-content">
                     <header className="admin-topbar">
                         <div className="topbar-left">
                             <button type="button" className="topbar-action mobile-logout" onClick={handleLogout}>
@@ -60,7 +60,7 @@ function AtletaDashboard({ vista }) {
                         </div>
                     </header>
 
-                    <main className="admin-content" style={{ overflowY: 'auto' }}>
+                    <main className="admin-content" style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                         {toast.msg && <Toast msg={toast.msg} tipo={toast.tipo} />}
                         
                         {vista === 'rutina' && <RutinasView />}

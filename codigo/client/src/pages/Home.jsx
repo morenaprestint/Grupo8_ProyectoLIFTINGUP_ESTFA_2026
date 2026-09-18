@@ -22,7 +22,7 @@ function Home() {
         {/* The Sidebar (PC) / Bottom Nav (Mobile) is handled by AtletaNavbar now */}
         <AtletaNavbar onLogout={handleLogout} />
 
-        <div className="admin-main">
+        <div className="admin-main atleta-main main-content">
           
           {/* Topbar matching AdminDashboard */}
           <header className="admin-topbar">
@@ -70,11 +70,6 @@ function Home() {
           <main className="admin-content admin-home">
             
             <section className="home-welcome">
-              <img
-                src="/logo.png"
-                alt="Lifting Up"
-                className="home-logo"
-              />
               <h1>
                 “Hola, {user?.nombre || 'Atleta'}” 👋
               </h1>

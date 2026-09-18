@@ -34,7 +34,7 @@ function AtletaNavbar({ onLogout, moduloPendiente }) {
 
   return (
     <nav className="admin-sidebar atleta-sidebar">
-      
+
       <div className="sidebar-logo-container">
         <img
           src="/logo.png"

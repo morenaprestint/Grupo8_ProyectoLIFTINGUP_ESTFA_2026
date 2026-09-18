@@ -1,41 +1,64 @@
-import React, { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AtletaNavbar from '../components/AtletaNavbar';
-import { logout } from '../features/authService';
+import { getCurrentUser, logout } from '../features/authService';
+import { getAsistencias, createAsistencia } from '../services/api';
+import { useCalendarGrid } from '../hooks/useCalendarGrid';
 import '../styles/attendance.css';
 
 const Attendance = () => {
+  const user = getCurrentUser();
   const navigate = useNavigate();
   const [showConfirm, setShowConfirm] = useState(false);
-  const [attendanceMarked, setAttendanceMarked] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [asistencias, setAsistencias] = useState([]);
 
-  // For the monthly calendar (31 days)
-  const [monthlyDays, setMonthlyDays] = useState(
-    Array.from({ length: 31 }, (_, i) => ({
-      day: i + 1,
-      status: 'pending' // 'pending', 'yes', 'no'
-    }))
-  );
-  const [selectedDayIndex, setSelectedDayIndex] = useState(null);
+  const {
+    monthTitle,
+    days,
+    paddingDays,
+    todayStr,
+    getWeeklyDays,
+    verificarAsistencia,
+    irMesAnterior,
+    irMesSiguiente
+  } = useCalendarGrid({ startOnMonday: true });
 
-  // Mock data for weekly attendance
-  const weeklyData = [
-    { day: 'lun', status: 'yes' },
-    { day: 'mar', status: 'yes' },
-    { day: 'mier', status: 'yes' },
-    { day: 'jue', status: 'no' },
-    { day: 'vie', status: 'yes' },
-    { day: 'sab', status: 'yes' },
-    { day: 'dom', status: 'no' },
-  ];
+  const cargarAsistencias = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await getAsistencias(user.id);
+      if (res?.success && Array.isArray(res.data)) {
+        setAsistencias(res.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar asistencias:', error);
+    }
+  }, [user?.id]);
 
-  const currentMonth = 'Agosto';
-  const attendedDaysCount = monthlyDays.filter(d => d.status === 'yes').length;
+  useEffect(() => {
+    cargarAsistencias();
+  }, [cargarAsistencias]);
 
-  const handleAttendance = (didAttend) => {
-    // Backend logic here
-    setAttendanceMarked(true);
-    setShowConfirm(false);
+  const attendanceMarkedToday = verificarAsistencia(todayStr, asistencias);
+
+  const handleAttendance = async (didAttend, dateStr = todayStr) => {
+    if (!didAttend) {
+      setShowConfirm(false);
+      setSelectedDay(null);
+      return;
+    }
+
+    try {
+      const res = await createAsistencia({ id_usuario: user?.id, fecha: dateStr });
+      if (res?.success) {
+        setShowConfirm(false);
+        setSelectedDay(null);
+        cargarAsistencias();
+      }
+    } catch (error) {
+      console.error('Error al registrar asistencia:', error);
+    }
   };
 
   const handleLogout = () => {
@@ -43,26 +66,8 @@ const Attendance = () => {
     navigate('/');
   };
 
-  const openDayModal = (index) => {
-    setSelectedDayIndex(index);
-  };
-
-  const markSpecificDay = (status) => {
-    if (selectedDayIndex === null) return;
-    const newDays = [...monthlyDays];
-    newDays[selectedDayIndex].status = status;
-    setMonthlyDays(newDays);
-    setSelectedDayIndex(null);
-  };
-
-  const navItems = [
-    { name: 'Home', path: '/home', icon: 'home.png' },
-    { name: 'Progreso', path: '/progreso', icon: 'progreso.png' },
-    { name: 'Nutrición', path: '/nutricion', icon: 'nutricion.png' },
-    { name: 'Rutina', path: '/rutina', icon: 'rutina.png' },
-    { name: 'Calendario', path: '/calendario', icon: 'calendario.png' },
-    { name: 'Asistencia', path: '/asistencia', icon: 'asistencia.png' }
-  ];
+  const weeklyData = getWeeklyDays(asistencias);
+  const attendedDaysCount = days.filter(d => verificarAsistencia(d.dateStr, asistencias)).length;
 
   return (
     <div className="attendance-page">
@@ -71,10 +76,8 @@ const Attendance = () => {
         <AtletaNavbar onLogout={handleLogout} />
 
         {/* Main Content Area */}
-        <div className="admin-main attendance-main">
-          
+        <div className="admin-main attendance-main atleta-main main-content">
           <div className="attendance-content-centered">
-            <img src="/logo.png" alt="LIFTING UP" className="attendance-main-logo" />
             <h1 className="page-title">PROGRESO DEL ATLETA</h1>
 
             {/* Weekly Section */}
@@ -84,12 +87,14 @@ const Attendance = () => {
               <div className="weekly-days">
                 {weeklyData.map((item, index) => (
                   <div key={index} className="day-col">
-                    <span className="day-name">{item.day}</span>
+                    <span className="day-name">{item.dayName}</span>
                     <div className="status-icon">
                       {item.status === 'yes' ? (
                         <svg viewBox="0 0 24 24" fill="none" stroke="#8C58D3" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      ) : (
+                      ) : item.status === 'no' ? (
                         <svg viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted, #7f7f7f)' }}>•</span>
                       )}
                     </div>
                   </div>
@@ -101,64 +106,68 @@ const Attendance = () => {
               {/* Action Button or Confirmation Modal */}
               {!showConfirm ? (
                 <button
+                  type="button"
                   className="btn-mark-attendance"
-                  onClick={() => setShowConfirm(true)}
-                  disabled={attendanceMarked}
+                  onClick={() => {
+                    setSelectedDay(null);
+                    setShowConfirm(true);
+                  }}
+                  disabled={attendanceMarkedToday}
                 >
-                  {attendanceMarked ? "ASISTENCIA MARCADA" : "MARCAR ASISTENCIA HOY"}
+                  {attendanceMarkedToday ? "ASISTENCIA MARCADA HOY" : "MARCAR ASISTENCIA HOY"}
                 </button>
               ) : (
                 <div className="confirmation-box">
-                  <h3>¿Asististe hoy?</h3>
+                  <h3>{selectedDay ? `¿Asististe el ${selectedDay.dayName} ${selectedDay.day}?` : '¿Asististe hoy?'}</h3>
                   <div className="confirm-buttons">
-                    <button className="btn-confirm yes" onClick={() => handleAttendance(true)}>
+                    <button type="button" className="btn-confirm yes" onClick={() => handleAttendance(true, selectedDay?.dateStr || todayStr)}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                       Sí, asistí
                     </button>
-                    <button className="btn-confirm no" onClick={() => handleAttendance(false)}>
+                    <button type="button" className="btn-confirm no" onClick={() => handleAttendance(false)}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                      No, no fui
+                      No, cancelar
                     </button>
                   </div>
-                  <p className="help-text">Selecciona una opción para registrar tu asistencia hoy.</p>
+                  <p className="help-text">Confirma tu asistencia para registrarla en el sistema.</p>
                 </div>
               )}
             </section>
 
             {/* Monthly Section */}
             <section className="attendance-card monthly-card">
-              <h2 className="card-title">RESUMEN MENSUAL</h2>
-              <div className="monthly-stats">
-                <span>Mes actual ({currentMonth})</span>
-                <span>Días asistidos: {attendedDaysCount}</span>
-              </div>
-              <div className="monthly-grid">
-                {monthlyDays.map((dayObj, index) => (
-                  <div
-                    key={index}
-                    className={`grid-day ${dayObj.status}`}
-                    onClick={() => openDayModal(index)}
-                  ></div>
-                ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <button type="button" onClick={irMesAnterior} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer' }}>❮</button>
+                <h2 className="card-title" style={{ margin: 0 }}>{monthTitle}</h2>
+                <button type="button" onClick={irMesSiguiente} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer' }}>❯</button>
               </div>
 
-              {/* Mini Modal for Monthly Grid Selection */}
-              {selectedDayIndex !== null && (
-                <div className="monthly-day-modal">
-                  <h3>Día {selectedDayIndex + 1} - ¿Asististe?</h3>
-                  <div className="confirm-buttons">
-                    <button className="btn-confirm yes" onClick={() => markSpecificDay('yes')}>
-                      Sí, fui
-                    </button>
-                    <button className="btn-confirm no" onClick={() => markSpecificDay('no')}>
-                      No, no fui
-                    </button>
-                    <button className="btn-confirm cancel" onClick={() => setSelectedDayIndex(null)}>
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div className="monthly-stats">
+                <span>Mes actual</span>
+                <span>Días asistidos: {attendedDaysCount}</span>
+              </div>
+
+              <div className="monthly-grid">
+                {Array.from({ length: paddingDays }).map((_, i) => (
+                  <div key={`pad-${i}`} style={{ width: '26px', height: '26px' }} />
+                ))}
+                {days.map((dayObj) => {
+                  const hasAttended = verificarAsistencia(dayObj.dateStr, asistencias);
+                  return (
+                    <div
+                      key={dayObj.dateStr}
+                      className={`grid-day ${hasAttended ? 'yes' : (dayObj.dateStr > todayStr ? 'pending' : 'no')}`}
+                      onClick={() => {
+                        if (dayObj.dateStr <= todayStr && !hasAttended) {
+                          setSelectedDay(dayObj);
+                          setShowConfirm(true);
+                        }
+                      }}
+                      title={`${dayObj.dayName} ${dayObj.day}`}
+                    />
+                  );
+                })}
+              </div>
             </section>
 
             {/* Spacer to allow scrolling above navbar on mobile */}
