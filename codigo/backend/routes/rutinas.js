@@ -6,5 +6,7 @@ router.get('/', rutinasController.getRutinas);
 router.get('/:id', rutinasController.getRutinaById);
 router.post('/', rutinasController.createRutina);
 router.put('/:id', rutinasController.updateRutina);
+router.delete('/:id', rutinasController.deleteRutina);
 
 module.exports = router;
+
