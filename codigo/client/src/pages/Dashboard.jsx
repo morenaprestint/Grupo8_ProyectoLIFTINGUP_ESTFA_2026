@@ -28,6 +28,8 @@ import UsuariosTable from '../components/UsuariosTable.jsx'
 import UsuarioForm from '../components/UsuarioForm.jsx'
 import AdminForm from '../components/AdminForm.jsx'
 import UsuarioModal from '../components/UsuarioModal.jsx'
+import EquipamientoView from '../views/EquipamientoView.jsx'
+import PerfilAdminView from '../views/PerfilAdminView.jsx'
 
 import '../styles/adminDashboard.css'
 
@@ -85,11 +87,18 @@ function Toast({ msg, tipo }) {
   )
 }
 
-function AdminDashboard() {
+function AdminDashboard({ vistaInicial = 'home' }) {
   const navigate = useNavigate()
   const admin = getCurrentUser()
 
-  const [vista, setVista] = useState('home')
+  const [vista, setVista] = useState(vistaInicial)
+
+  useEffect(() => {
+    if (vistaInicial) {
+      setVista(vistaInicial)
+    }
+  }, [vistaInicial])
+
   const [tipoAlta, setTipoAlta] = useState('usuario')
 
   // Usuarios & Admins
@@ -516,10 +525,10 @@ function AdminDashboard() {
         prearmada: 1,
         es_favorita: 0,
         ejercicios: rutinaEjercicios.map(e => ({
-          id_ejercicio: e.id_ejercicio,
-          series: parseInt(e.series, 10) || 3,
-          repeticiones: parseInt(e.repeticiones, 10) || 12,
-          peso: parseFloat(e.peso) || 0
+          id_ejercicio: e.id_ejercicio || e.id,
+          series: Number(e.series) || 3,
+          repeticiones: Number(e.repeticiones) || 10,
+          peso: Number(e.peso) || 0
         }))
       }
       if (rutinaEditando) {
@@ -589,7 +598,7 @@ function AdminDashboard() {
   const asistenciasFiltradas = asistenciasList.filter(a => {
     const texto = busquedaAsistencia.trim().toLowerCase()
     if (!texto) return true
-    const nombreCompleto = `${a.nombre || ''} ${a.apellido || ''}`.toLowerCase()
+    const nombreCompleto = (a.nombre_completo || `${a.nombre || ''} ${a.apellido || ''}`).toLowerCase()
     return nombreCompleto.includes(texto) || a.email?.toLowerCase().includes(texto)
   })
 
@@ -606,11 +615,27 @@ function AdminDashboard() {
     return r.nombre?.toLowerCase().includes(texto) || r.descripcion?.toLowerCase().includes(texto) || r.dia_asignado?.toLowerCase().includes(texto)
   })
 
-  // Formateador de Fecha y Hora
-  const formatearFechaHora = (fechaIso) => {
-    if (!fechaIso) return { fecha: '-', hora: '-' }
-    const d = new Date(fechaIso)
-    if (isNaN(d.getTime())) return { fecha: fechaIso, hora: '-' }
+  // Formateador de Fecha y Hora legible (DD/MM/YYYY HH:mm)
+  const formatearFechaHora = (fechaInput) => {
+    if (!fechaInput) return { fecha: '-', hora: '-' }
+
+    // Parseo directo si viene como string SQL 'YYYY-MM-DD HH:mm:ss' para evitar desfases de zona horaria
+    if (typeof fechaInput === 'string' && fechaInput.includes('-')) {
+      const parts = fechaInput.replace('T', ' ').split(' ')
+      const datePart = parts[0]
+      const timePart = parts[1] ? parts[1].slice(0, 5) : ''
+
+      const [anio, mes, dia] = datePart.split('-')
+      if (anio && mes && dia) {
+        return {
+          fecha: `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${anio}`,
+          hora: timePart ? `${timePart} hs` : 'Registrada'
+        }
+      }
+    }
+
+    const d = new Date(fechaInput)
+    if (isNaN(d.getTime())) return { fecha: String(fechaInput), hora: '-' }
     const dia = String(d.getDate()).padStart(2, '0')
     const mes = String(d.getMonth() + 1).padStart(2, '0')
     const anio = d.getFullYear()
@@ -707,8 +732,8 @@ function AdminDashboard() {
 
             <button
               type="button"
-              className="sidebar-item"
-              onClick={() => moduloPendiente('Equipamiento')}
+              className={`sidebar-item ${vista === 'equipamiento' ? 'activo' : ''}`}
+              onClick={() => cambiarVista('equipamiento')}
             >
               <img
                 src="/icons/admin/mancuerna.png"
@@ -743,7 +768,7 @@ function AdminDashboard() {
           <header className="admin-topbar">
             {/* IZQUIERDA */}
             <div className="topbar-left">
-              {(vista === 'usuarios' || vista === 'asistencia' || vista === 'ejercicios' || vista === 'rutinas') && (
+              {(vista === 'usuarios' || vista === 'asistencia' || vista === 'ejercicios' || vista === 'rutinas' || vista === 'equipamiento' || vista === 'perfil') && (
                 <button
                   type="button"
                   className="topbar-action mobile-logout"
@@ -781,11 +806,11 @@ function AdminDashboard() {
 
             {/* DERECHA */}
             <div className="topbar-right">
-              {vista === 'home' && (
+              {(vista === 'home' || vista === 'equipamiento' || vista === 'perfil') && (
                 <button
                   type="button"
-                  className="topbar-action perfil-admin-topbar"
-                  onClick={() => moduloPendiente('Perfil')}
+                  className={`topbar-action perfil-admin-topbar ${vista === 'perfil' ? 'activo' : ''}`}
+                  onClick={() => cambiarVista('perfil')}
                 >
                   <img
                     src="/icons/admin/perfil.png"
@@ -999,15 +1024,16 @@ function AdminDashboard() {
               ) : asistenciasFiltradas.length > 0 ? (
                 <div className="asistencia-grid">
                   {asistenciasFiltradas.map((a) => {
-                    const dt = formatearFechaHora(a.fecha)
+                    const dt = formatearFechaHora(a.fecha_formateada || a.fecha)
+                    const nombreMostrar = a.nombre_completo || (a.nombre ? `${a.nombre} ${a.apellido || ''}`.trim() : (a.email || 'Usuario'))
                     return (
                       <div key={a.id_asistencia} className="asistencia-card">
                         <div className="asistencia-header">
                           <div>
                             <h3 className="asistencia-alumno-nombre">
-                              {a.nombre} {a.apellido}
+                              {nombreMostrar}
                             </h3>
-                            <p className="asistencia-alumno-email">{a.email}</p>
+                            {a.email && <p className="asistencia-alumno-email">{a.email}</p>}
                           </div>
                           <span className="badge-estado activo">Presente</span>
                         </div>
@@ -1215,9 +1241,24 @@ function AdminDashboard() {
                         {r.ejercicios && r.ejercicios.length > 0 ? (
                           r.ejercicios.map((ej, idx) => (
                             <div key={idx} className="rutina-ejercicio-row">
-                              <span>• {ej.nombre}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                                {ej.gif ? (
+                                  <img
+                                    src={ej.gif}
+                                    alt={ej.nombre}
+                                    className="rutina-ejercicio-mini-gif"
+                                    onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                  />
+                                ) : (
+                                  <div className="rutina-ejercicio-mini-placeholder">💪</div>
+                                )}
+                                <div className="rutina-ejercicio-info">
+                                  <span className="rutina-ejercicio-nombre-text">{ej.nombre}</span>
+                                  <span className="rutina-ejercicio-grupo">{ej.grupo_muscular || 'General'}</span>
+                                </div>
+                              </div>
                               <span className="ejercicio-row-metricas">
-                                {ej.series} series × {ej.repeticiones} reps {Number(ej.peso) > 0 ? `(${ej.peso} kg)` : ''}
+                                {ej.series}s × {ej.repeticiones}r {Number(ej.peso) > 0 ? `(${ej.peso} kg)` : ''}
                               </span>
                             </div>
                           ))
@@ -1309,6 +1350,20 @@ function AdminDashboard() {
                       : 'Crear Usuario'}
                 </button>
               </section>
+            </main>
+          )}
+
+          {/* VISTA EQUIPAMIENTO */}
+          {vista === 'equipamiento' && (
+            <main className="admin-content dashboard-content">
+              <EquipamientoView />
+            </main>
+          )}
+
+          {/* VISTA PERFIL ADMIN */}
+          {vista === 'perfil' && (
+            <main className="admin-content dashboard-content">
+              <PerfilAdminView />
             </main>
           )}
 
@@ -1493,7 +1548,7 @@ function AdminDashboard() {
         {/* MODAL CREAR O EDITAR RUTINA PREARMADA (ADMIN) */}
         {modalCrearRutina && (
           <div className="overlay">
-            <div className="modal" style={{ maxWidth: '440px' }}>
+            <div className="modal modal-rutina">
               <h2 className="modal-titulo">
                 {rutinaEditando ? 'Editar Rutina Prearmada' : 'Nueva Rutina Prearmada'}
               </h2>
@@ -1569,29 +1624,37 @@ function AdminDashboard() {
                     {rutinaEjercicios.map((ej, index) => (
                       <div
                         key={index}
-                        style={{
-                          background: 'rgba(20, 14, 55, 0.9)',
-                          border: '1px solid rgba(0, 210, 255, 0.5)',
-                          borderRadius: '8px',
-                          padding: '10px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '6px'
-                        }}
+                        className="rutina-modal-draft-item"
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ color: 'white', fontWeight: '600', fontSize: '13px' }}>
-                            {ej.nombre}
-                          </span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                            {ej.gif ? (
+                              <img
+                                src={ej.gif}
+                                alt={ej.nombre}
+                                className="rutina-ejercicio-mini-gif"
+                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                              />
+                            ) : (
+                              <div className="rutina-ejercicio-mini-placeholder">💪</div>
+                            )}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <span style={{ color: 'white', fontWeight: '600', fontSize: '13px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {ej.nombre}
+                              </span>
+                              <span style={{ color: '#a0a0a0', fontSize: '11px' }}>{ej.grupo_muscular || 'Gral'}</span>
+                            </div>
+                          </div>
                           <button
                             type="button"
                             onClick={() => quitarEjercicioRutinaDraft(index)}
-                            style={{ background: 'transparent', border: 'none', color: '#ffb2b4', cursor: 'pointer' }}
+                            style={{ background: 'transparent', border: 'none', color: '#ffb2b4', cursor: 'pointer', fontSize: '18px', padding: '0 4px' }}
+                            title="Quitar"
                           >
                             ✕
                           </button>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                        <div className="rutina-draft-metrics-grid">
                           <div>
                             <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Series</label>
                             <input

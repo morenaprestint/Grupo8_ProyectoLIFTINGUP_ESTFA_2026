@@ -8,11 +8,13 @@ exports.getAsistencias = async (req, res) => {
                 a.id_asistencia, 
                 a.id_usuario, 
                 a.fecha, 
+                DATE_FORMAT(a.fecha, '%Y-%m-%d %H:%i:%s') AS fecha_formateada,
                 u.nombre, 
                 u.apellido, 
-                u.email
+                u.email,
+                COALESCE(CONCAT(u.nombre, ' ', u.apellido), u.nombre, u.email, 'Usuario') AS nombre_completo
             FROM asistencias a
-            JOIN usuarios u ON a.id_usuario = u.id_usuario
+            LEFT JOIN usuarios u ON a.id_usuario = u.id_usuario
         `;
         const params = [];
         const conditions = [];

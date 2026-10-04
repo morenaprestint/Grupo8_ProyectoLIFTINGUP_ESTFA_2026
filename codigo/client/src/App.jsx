@@ -13,9 +13,18 @@ import Login from './pages/Login'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import Register from './pages/Register'
-import TestDB from './pages/TestDB'
 import VerifyEmail from './pages/VerifyEmail'
 import AtletaDashboard from './components/AtletaDashboard'
+
+import PerfilAtletaView from './views/PerfilAtletaView'
+import PerfilAdminView from './views/PerfilAdminView'
+import EquipamientoView from './views/EquipamientoView'
+
+const PerfilRoute = () => {
+  const user = getCurrentUser()
+  if (!user) return <Navigate to="/" replace />
+  return user.rol === 'admin' ? <Dashboard vistaInicial="perfil" /> : <AtletaDashboard vista="perfil" />
+}
 
 const RequireAuth = ({ children, allowedRoles }) => {
   const user = getCurrentUser()
@@ -65,7 +74,6 @@ function App() {
 
         <Route path="/register" element={<Register />} />
 
-        <Route path="/test-db" element={<TestDB />} />
         <Route 
           path="/asistencia" 
           element={
@@ -87,6 +95,38 @@ function App() {
           element={
             <RequireAuth allowedRoles={['atleta']}>
               <AtletaDashboard vista="calendario" />
+            </RequireAuth>
+          } 
+        />
+        <Route 
+          path="/nutricion" 
+          element={
+            <RequireAuth allowedRoles={['atleta']}>
+              <AtletaDashboard vista="nutricion" />
+            </RequireAuth>
+          } 
+        />
+        <Route 
+          path="/progreso" 
+          element={
+            <RequireAuth allowedRoles={['atleta']}>
+              <AtletaDashboard vista="progreso" />
+            </RequireAuth>
+          } 
+        />
+        <Route 
+          path="/entrenamiento" 
+          element={
+            <RequireAuth allowedRoles={['atleta']}>
+              <AtletaDashboard vista="entrenamiento" />
+            </RequireAuth>
+          } 
+        />
+        <Route 
+          path="/entrenar" 
+          element={
+            <RequireAuth allowedRoles={['atleta']}>
+              <AtletaDashboard vista="entrenamiento" />
             </RequireAuth>
           } 
         />
@@ -114,6 +154,42 @@ function App() {
           element={
             <RequireAuth allowedRoles={['admin']}>
               <Dashboard />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/perfil"
+          element={
+            <RequireAuth allowedRoles={['atleta', 'admin']}>
+              <PerfilRoute />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/perfil-atleta"
+          element={
+            <RequireAuth allowedRoles={['atleta']}>
+              <AtletaDashboard vista="perfil" />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/perfil-admin"
+          element={
+            <RequireAuth allowedRoles={['admin']}>
+              <Dashboard vistaInicial="perfil" />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/equipamiento"
+          element={
+            <RequireAuth allowedRoles={['admin']}>
+              <Dashboard vistaInicial="equipamiento" />
             </RequireAuth>
           }
         />

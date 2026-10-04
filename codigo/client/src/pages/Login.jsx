@@ -16,28 +16,31 @@ function Login() {
     }
   }, [navigate])
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
+  const handleSubmit = async (e) => {
+    e.preventDefault()
 
-    if (!email || !password) {
-      setError('Por favor completa todos los campos')
-      return
-    }
+    // 1. Limpiamos espacios accidentales del teclado del celular
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanPassword = password.trim()
 
     try {
-      const user = await login(email, password)
+      // 2. Enviamos las credenciales limpias al login
+      const user = await login(cleanEmail, cleanPassword)
 
       if (!user) {
         setError('Email o contraseña inválidos')
         return
       }
 
+      // 3. Guardamos sesión y reorientamos según el rol
       saveUser(user)
       navigate(user.rol === 'admin' ? '/dashboard' : '/home')
     } catch (err) {
+      console.error('Error al iniciar sesión:', err)
       setError('Error al conectar con el servidor')
     }
   }
+
 
   return (
     <div className="login-container">

@@ -1704,9 +1704,13 @@ textarea {
   background: #181528;
   border: 1px solid rgba(138, 43, 226, 0.6);
   border-radius: 14px;
-  padding: 18px 20px;
+  padding: 12px;
+  min-height: 90px;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
   transition: transform 0.2s, border-color 0.2s;
@@ -1722,18 +1726,20 @@ textarea {
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
+  width: 100%;
 }
 
 .asistencia-alumno-nombre {
   color: #ffffff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   margin: 0;
+  word-break: break-word;
 }
 
 .asistencia-alumno-email {
   color: #a0a0a0;
-  font-size: 13px;
+  font-size: 12px;
   margin: 2px 0 0 0;
   word-break: break-all;
 }
@@ -1742,7 +1748,9 @@ textarea {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 6px;
+  align-items: center;
+  margin-top: 4px;
+  width: 100%;
 }
 
 .asistencia-badge-fecha {
@@ -1753,6 +1761,7 @@ textarea {
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 20px;
+  white-space: nowrap;
 }
 
 .asistencia-badge-hora {
@@ -1763,6 +1772,34 @@ textarea {
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 20px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .asistencia-card {
+    min-height: 80px;
+    padding: 12px;
+    width: 100%;
+  }
+
+  .asistencia-header {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .asistencia-alumno-nombre {
+    font-size: 14px;
+  }
+
+  .asistencia-datetime-container {
+    gap: 6px;
+  }
+
+  .asistencia-badge-fecha,
+  .asistencia-badge-hora {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
 }
 
 /* Tarjetas y Grid de Ejercicios */
@@ -1935,8 +1972,9 @@ textarea {
   align-items: center;
   font-size: 12px;
   color: #d8ecf8;
-  padding: 4px 0;
+  padding: 6px 0;
   border-bottom: 1px dashed rgba(140, 88, 211, 0.2);
+  gap: 8px;
 }
 
 .rutina-ejercicio-row:last-child {
@@ -1946,4 +1984,209 @@ textarea {
 .ejercicio-row-metricas {
   color: #00d2ff;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   ESTILOS RESPONSIVOS PARA TARJETAS DE RUTINA, MODALES Y LISTA DE EJERCICIOS
+   ========================================================================== */
+
+.rutina-card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #181528;
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid rgba(0, 210, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.rutina-card-container.favorita {
+  border-color: #c307cd;
+}
+
+.rutina-card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rutina-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rutina-ejercicio-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px dashed rgba(140, 88, 211, 0.2);
+  transition: background 0.15s ease;
+}
+
+.rutina-ejercicio-card-row:last-child {
+  border-bottom: none;
+}
+
+.rutina-ejercicio-card-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rutina-ejercicio-mini-gif {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.rutina-ejercicio-mini-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(140, 88, 211, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.rutina-ejercicio-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rutina-ejercicio-nombre {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rutina-ejercicio-nombre-text {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rutina-ejercicio-grupo {
+  color: #a0a0a0;
+  font-size: 11px;
+}
+
+.rutina-ejercicio-badge-metrics {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #00d2ff;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rutina-ejercicio-peso {
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 11px;
+}
+
+/* Borrador y Modal Items de Ejercicio */
+.rutina-draft-ejercicio-card {
+  border: 1px solid rgba(0, 210, 255, 0.4);
+  background: rgba(20, 14, 55, 0.85);
+  padding: 12px;
+  border-radius: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  transition: border-color 0.2s ease;
+}
+
+.rutina-draft-ejercicio-card:hover {
+  border-color: #00d2ff;
+}
+
+.rutina-modal-draft-item {
+  background: rgba(20, 14, 55, 0.9);
+  border: 1px solid rgba(0, 210, 255, 0.5);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rutina-draft-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* Adaptación responsive para pantallas móviles */
+@media (max-width: 600px) {
+  .rutina-draft-ejercicio-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .rutina-draft-metrics-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .rutina-card-header-flex {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .rutina-card-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .rutina-ejercicio-card-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .rutina-ejercicio-badge-metrics {
+    align-self: flex-end;
+  }
+
+  .rutina-ejercicio-mini-gif,
+  .rutina-ejercicio-mini-placeholder {
+    width: 36px;
+    height: 36px;
+  }
 }

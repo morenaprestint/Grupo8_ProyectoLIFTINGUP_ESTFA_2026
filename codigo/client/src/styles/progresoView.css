@@ -1,0 +1,404 @@
+/* ==========================================================================
+   PROGRESO VIEW - PROGRESO DEL ATLETA CON GRÁFICOS EN KILOS
+   Paleta de colores:
+   - Fondo: #0c0919, #141028
+   - Tarjetas: #181528, #1e1936
+   - Acentos: Púrpura neón #8a2be2, #6c5ce7, Cian eléctrico #00d2ff
+   - Métricas: Oro #fbbf24, Verde #00c853, Cian #00d2ff
+   ========================================================================== */
+
+:root {
+  --prog-bg-page: #0c0919;
+  --prog-bg-card: #181528;
+  --prog-bg-card-inner: rgba(22, 17, 43, 0.85);
+  --prog-neon-purple: #8a2be2;
+  --prog-neon-purple-soft: #6c5ce7;
+  --prog-cyan: #00d2ff;
+  --prog-gold: #fbbf24;
+  --prog-green: #00c853;
+  --prog-border: rgba(138, 43, 226, 0.35);
+  --prog-text: #ffffff;
+  --prog-text-muted: #94a3b8;
+}
+
+.progreso-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 18px 14px 100px;
+  box-sizing: border-box;
+  color: var(--prog-text);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.progreso-header {
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.progreso-title {
+  font-size: 24px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 6px 0;
+  background: linear-gradient(135deg, #ffffff 40%, var(--prog-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.progreso-subtitle {
+  font-size: 13px;
+  color: var(--prog-text-muted);
+  margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────
+   1. ESTADÍSTICAS DEL MES (3 TARJETAS RESUMEN)
+   ───────────────────────────────────────────────────────── */
+.progreso-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.progreso-stat-card {
+  background: var(--prog-bg-card);
+  border: 1px solid var(--prog-border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.progreso-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--prog-cyan);
+}
+
+.progreso-stat-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.progreso-stat-icon-box.dias {
+  background: rgba(0, 210, 255, 0.15);
+  border: 1px solid var(--prog-cyan);
+  color: var(--prog-cyan);
+}
+
+.progreso-stat-icon-box.tiempo {
+  background: rgba(138, 43, 226, 0.15);
+  border: 1px solid var(--prog-neon-purple);
+  color: #a78bfa;
+}
+
+.progreso-stat-icon-box.volumen {
+  background: rgba(0, 200, 83, 0.15);
+  border: 1px solid var(--prog-green);
+  color: #69f0ae;
+}
+
+.progreso-stat-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.progreso-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--prog-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.progreso-stat-val {
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* ─────────────────────────────────────────────────────────
+   2. GRÁFICO DE EVOLUCIÓN EN KILOS (SVG INTERACTIVO)
+   ───────────────────────────────────────────────────────── */
+.progreso-chart-card {
+  background: var(--prog-bg-card);
+  border: 1px solid var(--prog-border);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.progreso-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.progreso-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.progreso-chart-container {
+  width: 100%;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.progreso-svg-chart {
+  width: 100%;
+  height: 220px;
+  display: block;
+}
+
+.progreso-chart-empty {
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--prog-text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ─────────────────────────────────────────────────────────
+   3. RÉCORDS PERSONALES (TARJETAS PR)
+   ───────────────────────────────────────────────────────── */
+.progreso-records-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.progreso-records-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.progreso-record-card {
+  background: linear-gradient(135deg, rgba(26, 20, 52, 0.85), rgba(18, 14, 38, 0.95));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.progreso-record-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--prog-gold);
+  box-shadow: 0 6px 22px rgba(251, 191, 36, 0.25);
+}
+
+.record-trophy-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid var(--prog-gold);
+  color: var(--prog-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.record-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.record-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--prog-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.record-val {
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-top: 2px;
+}
+
+.record-sub {
+  font-size: 11px;
+  color: var(--prog-text-muted);
+}
+
+/* ─────────────────────────────────────────────────────────
+   4. HISTORIAL DE SESIONES RECIENTES
+   ───────────────────────────────────────────────────────── */
+.progreso-historial-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.progreso-historial-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progreso-historial-item {
+  background: var(--prog-bg-card);
+  border: 1px solid var(--prog-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.progreso-historial-item:hover {
+  border-color: var(--prog-cyan);
+}
+
+.historial-item-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.historial-item-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(138, 43, 226, 0.15);
+  border: 1px solid var(--prog-neon-purple);
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.historial-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.historial-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+.historial-item-fecha {
+  font-size: 11.5px;
+  color: var(--prog-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.historial-item-metrics {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.historial-metric-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.historial-metric-sub {
+  font-size: 10px;
+  color: var(--prog-text-muted);
+  text-transform: uppercase;
+}
+
+.historial-metric-val {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--prog-cyan);
+}
+
+/* ─────────────────────────────────────────────────────────
+   5. RESPONSIVE DESIGN (@media max-width: 600px)
+   ───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .progreso-container {
+    padding: 12px 10px 80px;
+    gap: 14px;
+  }
+
+  .progreso-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .progreso-records-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .progreso-historial-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .historial-item-metrics {
+    justify-content: space-between;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(138, 43, 226, 0.2);
+  }
+
+  .historial-metric-pill {
+    align-items: center;
+  }
+}

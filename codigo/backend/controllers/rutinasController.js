@@ -22,13 +22,14 @@ exports.getRutinas = async (req, res) => {
         // Si hay rutinas, cargar los ejercicios vinculados a cada una
         if (rutinas.length > 0) {
             const rutinaIds = rutinas.map(r => r.id_rutina);
+            const placeholders = rutinaIds.map(() => '?').join(',');
             const [ejercicios] = await db.query(`
                 SELECT re.id_rutina, re.id_ejercicio, re.series, re.repeticiones, re.peso,
                        e.nombre, e.grupo_muscular, e.descripcion, e.gif
                 FROM rutina_ejercicio re
                 JOIN ejercicios e ON re.id_ejercicio = e.id_ejercicio
-                WHERE re.id_rutina IN (?)
-            `, [rutinaIds]);
+                WHERE re.id_rutina IN (${placeholders})
+            `, rutinaIds);
 
             const mapEjercicios = {};
             ejercicios.forEach(ej => {
@@ -51,7 +52,7 @@ exports.getRutinas = async (req, res) => {
 };
 
 exports.getRutinaById = async (req, res) => {
-    const { id } = req.params;
+    const id = req.params.id || req.params.id_rutina;
     try {
         const [rutinas] = await db.query('SELECT * FROM rutinas WHERE id_rutina = ?', [id]);
         if (rutinas.length === 0) {
@@ -72,26 +73,43 @@ exports.getRutinaById = async (req, res) => {
 };
 
 exports.createRutina = async (req, res) => {
-    const { nombre, descripcion, id_usuario, es_favorita, dia_asignado, ejercicios } = req.body;
+    const { nombre, descripcion, id_usuario, es_favorita, dia_asignado, ejercicios, peso } = req.body;
+
+    // Validación: si el peso enviado supera los 2000 kg, retorna 400 antes de ejecutar la consulta SQL
+    const pesoInvalido = (p) => p !== undefined && p !== null && Number(p) > 2000;
+    if (pesoInvalido(peso) || (Array.isArray(ejercicios) && ejercicios.some(e => pesoInvalido(e.peso)))) {
+        return res.status(400).json({ error: 'El peso no puede superar los 2000 kg.' });
+    }
+
     try {
         const [result] = await db.query(
             'INSERT INTO rutinas (nombre, descripcion, id_usuario, es_favorita, dia_asignado) VALUES (?, ?, ?, ?, ?)',
-            [nombre, descripcion || null, id_usuario || null, es_favorita || 0, dia_asignado || null]
+            [
+                nombre,
+                descripcion || null,
+                id_usuario || null,
+                es_favorita ? 1 : 0,
+                dia_asignado || null
+            ]
         );
         const id_rutina = result.insertId;
 
-        if (ejercicios && ejercicios.length > 0) {
-            const values = ejercicios.map(e => [
-                id_rutina,
-                e.id_ejercicio,
-                Number(e.series) || 3,
-                Number(e.repeticiones) || 10,
-                Number(e.peso) || 0
-            ]);
-            await db.query(
-                'INSERT INTO rutina_ejercicio (id_rutina, id_ejercicio, series, repeticiones, peso) VALUES ?',
-                [values]
-            );
+        if (Array.isArray(ejercicios) && ejercicios.length > 0) {
+            for (const e of ejercicios) {
+                const idEj = e.id_ejercicio || e.id;
+                if (idEj) {
+                    await db.query(
+                        'INSERT INTO rutina_ejercicio (id_rutina, id_ejercicio, series, repeticiones, peso) VALUES (?, ?, ?, ?, ?)',
+                        [
+                            id_rutina,
+                            idEj,
+                            Number(e.series) || 3,
+                            Number(e.repeticiones) || 10,
+                            Number(e.peso) || 0
+                        ]
+                    );
+                }
+            }
         }
 
         res.status(201).json({ success: true, data: { id_rutina, ...req.body } });
@@ -102,28 +120,57 @@ exports.createRutina = async (req, res) => {
 };
 
 exports.updateRutina = async (req, res) => {
-    const { id } = req.params;
-    const { nombre, descripcion, es_favorita, dia_asignado, ejercicios } = req.body;
+    const id = req.params.id || req.params.id_rutina;
+    const { nombre, descripcion, es_favorita, dia_asignado, ejercicios, peso } = req.body;
+
+    // Validación: si el peso enviado supera los 2000 kg, retorna 400 antes de ejecutar la consulta SQL
+    const pesoInvalido = (p) => p !== undefined && p !== null && Number(p) > 2000;
+    if (pesoInvalido(peso) || (Array.isArray(ejercicios) && ejercicios.some(e => pesoInvalido(e.peso)))) {
+        return res.status(400).json({ error: 'El peso no puede superar los 2000 kg.' });
+    }
+
     try {
-        await db.query(
-            'UPDATE rutinas SET nombre = COALESCE(?, nombre), descripcion = COALESCE(?, descripcion), es_favorita = COALESCE(?, es_favorita), dia_asignado = COALESCE(?, dia_asignado) WHERE id_rutina = ?',
-            [nombre, descripcion, es_favorita, dia_asignado, id]
-        );
+        const fields = [];
+        const values = [];
+
+        if (nombre !== undefined) {
+            fields.push('nombre = ?');
+            values.push(nombre);
+        }
+        if (descripcion !== undefined) {
+            fields.push('descripcion = ?');
+            values.push(descripcion);
+        }
+        if (es_favorita !== undefined) {
+            fields.push('es_favorita = ?');
+            values.push(es_favorita ? 1 : 0);
+        }
+        if (dia_asignado !== undefined) {
+            fields.push('dia_asignado = ?');
+            values.push(dia_asignado || null);
+        }
+
+        if (fields.length > 0) {
+            values.push(id);
+            await db.query(`UPDATE rutinas SET ${fields.join(', ')} WHERE id_rutina = ?`, values);
+        }
 
         if (Array.isArray(ejercicios)) {
             await db.query('DELETE FROM rutina_ejercicio WHERE id_rutina = ?', [id]);
-            if (ejercicios.length > 0) {
-                const values = ejercicios.map(e => [
-                    id,
-                    e.id_ejercicio,
-                    Number(e.series) || 3,
-                    Number(e.repeticiones) || 10,
-                    Number(e.peso) || 0
-                ]);
-                await db.query(
-                    'INSERT INTO rutina_ejercicio (id_rutina, id_ejercicio, series, repeticiones, peso) VALUES ?',
-                    [values]
-                );
+            for (const e of ejercicios) {
+                const idEj = e.id_ejercicio || e.id;
+                if (idEj) {
+                    await db.query(
+                        'INSERT INTO rutina_ejercicio (id_rutina, id_ejercicio, series, repeticiones, peso) VALUES (?, ?, ?, ?, ?)',
+                        [
+                            id,
+                            idEj,
+                            Number(e.series) || 3,
+                            Number(e.repeticiones) || 10,
+                            Number(e.peso) || 0
+                        ]
+                    );
+                }
             }
         }
 
@@ -135,8 +182,9 @@ exports.updateRutina = async (req, res) => {
 };
 
 exports.deleteRutina = async (req, res) => {
-    const { id } = req.params;
+    const id = req.params.id || req.params.id_rutina;
     try {
+        await db.query('DELETE FROM rutina_ejercicio WHERE id_rutina = ?', [id]);
         await db.query('DELETE FROM rutinas WHERE id_rutina = ?', [id]);
         res.json({ success: true, message: 'Rutina eliminada correctamente' });
     } catch (error) {

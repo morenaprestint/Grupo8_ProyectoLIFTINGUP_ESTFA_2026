@@ -5,6 +5,12 @@ const usuariosController = require('../controllers/usuariosController');
 // ── POST /api/usuarios/login — debe ir ANTES de /:id ──
 router.post('/login', usuariosController.login);
 
+// ── GET /api/usuarios/perfil — Obtener perfil del atleta ──
+router.get('/perfil', usuariosController.getPerfil);
+
+// ── PUT /api/usuarios/perfil — Actualizar perfil del atleta ──
+router.put('/perfil', usuariosController.updatePerfil);
+
 // ── GET /api/usuarios — Obtener todos los usuarios ──
 router.get('/', usuariosController.getUsuarios);
 

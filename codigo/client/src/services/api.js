@@ -180,3 +180,86 @@ export const deleteEjercicio = async (id) => {
     });
     return handleResponse(response);
 };
+
+// ─── HISTORIAL DE ENTRENAMIENTOS ─────────────────────────────────────────
+export const createHistorial = async (data) => {
+    const response = await fetch(`${API_URL}/historial`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+export const getHistorialByUsuario = async (id_usuario) => {
+    const response = await fetch(`${API_URL}/historial/${id_usuario}`);
+    return handleResponse(response);
+};
+
+// ─── PERFIL USUARIO ATLETA ────────────────────────────────────────────────
+export const getPerfilUsuario = async (userId, email) => {
+    let query = '';
+    if (userId) query = `?id=${userId}`;
+    else if (email) query = `?email=${encodeURIComponent(email)}`;
+    const response = await fetch(`${API_URL}/usuarios/perfil${query}`);
+    return handleResponse(response);
+};
+
+export const updatePerfilUsuario = async (data) => {
+    const response = await fetch(`${API_URL}/usuarios/perfil`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+// ─── PERFIL USUARIO ADMINISTRADOR ─────────────────────────────────────────
+export const getPerfilAdmin = async (adminId, email) => {
+    let query = '';
+    if (adminId) query = `?id=${adminId}`;
+    else if (email) query = `?email=${encodeURIComponent(email)}`;
+    const response = await fetch(`${API_URL}/admins/perfil${query}`);
+    return handleResponse(response);
+};
+
+export const updatePerfilAdmin = async (data) => {
+    const response = await fetch(`${API_URL}/admins/perfil`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+// ─── EQUIPAMIENTO ────────────────────────────────────────────────────────
+export const getEquipamiento = async (estatus = '') => {
+    const query = estatus ? `?estatus=${encodeURIComponent(estatus)}` : '';
+    const response = await fetch(`${API_URL}/equipamiento${query}`);
+    return handleResponse(response);
+};
+
+export const createEquipamiento = async (data) => {
+    const response = await fetch(`${API_URL}/equipamiento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+export const updateEquipamiento = async (id, data) => {
+    const response = await fetch(`${API_URL}/equipamiento/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+export const deleteEquipamiento = async (id) => {
+    const response = await fetch(`${API_URL}/equipamiento/${id}`, {
+        method: 'DELETE'
+    });
+    return handleResponse(response);
+};

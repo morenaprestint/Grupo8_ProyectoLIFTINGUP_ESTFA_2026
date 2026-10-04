@@ -1,0 +1,937 @@
+/* ==========================================================================
+   RUTINAS VIEW - REDISEÑO UI/UX PREMIUM
+   Paleta de colores estricta:
+   - Fondo violeta oscuro/azulado: #0c0919, #130f24, #18142e
+   - Púrpura Neón: #8a2be2, #6c5ce7, #9d4edd
+   - Acentos: #00d2ff (Cian), #ff4757 (Favorito Rosa/Rojo Neón)
+   - Contraste texto: #ffffff, #e2e8f0, #94a3b8
+   ========================================================================== */
+
+:root {
+  --rut-bg-page: #0c0919;
+  --rut-bg-card: #18142e;
+  --rut-bg-card-alt: #130f26;
+  --rut-bg-card-inner: rgba(14, 11, 28, 0.85);
+  --rut-neon-purple: #8a2be2;
+  --rut-neon-purple-soft: #6c5ce7;
+  --rut-neon-glow: rgba(138, 43, 226, 0.35);
+  --rut-cyan: #00d2ff;
+  --rut-cyan-glow: rgba(0, 210, 255, 0.25);
+  --rut-border: rgba(138, 43, 226, 0.35);
+  --rut-border-hover: rgba(0, 210, 255, 0.6);
+  --rut-text: #ffffff;
+  --rut-text-muted: #94a3b8;
+  --rut-text-secondary: #cbd5e1;
+  --rut-danger: #ff4757;
+  --rut-success: #10b981;
+}
+
+/* Contenedor principal de la vista */
+.rutinas-container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 18px 16px 90px;
+  box-sizing: border-box;
+  color: var(--rut-text);
+  font-family: inherit;
+}
+
+/* Título principal */
+.rutinas-header-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  margin: 0 0 18px 0;
+  color: #ffffff;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #ffffff 40%, var(--rut-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─────────────────────────────────────────────────────────
+   1. PESTAÑAS PRINCIPALES (RUTINAS DISPONIBLES | MIS RUTINAS)
+   ───────────────────────────────────────────────────────── */
+.rutinas-nav-tabs {
+  display: flex;
+  background: rgba(22, 17, 43, 0.9);
+  border: 1px solid var(--rut-border);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.rutinas-nav-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--rut-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 44px;
+  user-select: none;
+}
+
+.rutinas-nav-tab-btn.active {
+  background: linear-gradient(135deg, var(--rut-neon-purple), var(--rut-neon-purple-soft));
+  color: #ffffff;
+  box-shadow: 0 2px 14px var(--rut-neon-glow);
+}
+
+.rutinas-nav-tab-btn:not(.active):hover {
+  color: #ffffff;
+  background: rgba(138, 43, 226, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────────
+   2. BARRA HORIZONTAL DE FILTROS POR CHIPS / TAGS
+   ───────────────────────────────────────────────────────── */
+.rutinas-chips-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 14px;
+  margin-bottom: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(138, 43, 226, 0.4) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rutinas-chips-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.rutinas-chips-bar::-webkit-scrollbar-thumb {
+  background: rgba(138, 43, 226, 0.4);
+  border-radius: 4px;
+}
+
+.rutinas-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(26, 20, 52, 0.7);
+  border: 1px solid rgba(138, 43, 226, 0.35);
+  color: var(--rut-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  min-height: 38px;
+}
+
+.rutinas-chip-btn:hover {
+  background: rgba(138, 43, 226, 0.25);
+  border-color: var(--rut-neon-purple);
+  color: #ffffff;
+}
+
+.rutinas-chip-btn.active {
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.9), rgba(108, 92, 231, 0.9));
+  border-color: var(--rut-cyan);
+  color: #ffffff;
+  box-shadow: 0 0 12px var(--rut-neon-glow);
+}
+
+.rutinas-chip-btn.chip-favoritas.active {
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.9), rgba(138, 43, 226, 0.9));
+  border-color: #ff6b81;
+}
+
+/* ─────────────────────────────────────────────────────────
+   3. BARRA DE ACCIÓN SUB-SUPERIOR (CREAR RUTINA / FAVORITAS)
+   ───────────────────────────────────────────────────────── */
+.rutinas-sub-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.btn-crear-rutina-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--rut-neon-purple), var(--rut-neon-purple-soft));
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  box-shadow: 0 4px 16px var(--rut-neon-glow);
+  transition: all 0.2s ease;
+  min-height: 42px;
+}
+
+.btn-crear-rutina-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(138, 43, 226, 0.55);
+}
+
+.btn-crear-rutina-cta:active {
+  transform: translateY(0);
+}
+
+/* ─────────────────────────────────────────────────────────
+   4. TARJETAS DE RUTINA DIRECTAS Y LIMPIAS
+   ───────────────────────────────────────────────────────── */
+.rutinas-list-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rutina-direct-card {
+  background: var(--rut-bg-card);
+  border: 1px solid var(--rut-border);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rutina-direct-card:hover {
+  border-color: var(--rut-border-hover);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.rutina-direct-card.favorita {
+  border-color: rgba(255, 71, 87, 0.6);
+}
+
+/* Encabezado de la Tarjeta */
+.rutina-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.rutina-card-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.rutina-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rutina-card-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+.rutina-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rutina-card-badge.badge-dia {
+  background: rgba(0, 210, 255, 0.15);
+  border: 1px solid rgba(0, 210, 255, 0.4);
+  color: var(--rut-cyan);
+}
+
+.rutina-card-badge.badge-grupo {
+  background: rgba(138, 43, 226, 0.2);
+  border: 1px solid rgba(138, 43, 226, 0.4);
+  color: #d8b4fe;
+}
+
+.rutina-card-badge.badge-prearmada {
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(0, 210, 255, 0.3));
+  border: 1px solid var(--rut-cyan);
+  color: #ffffff;
+}
+
+.rutina-card-desc {
+  margin: 6px 0 0 0;
+  font-size: 13px;
+  color: var(--rut-text-muted);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Acciones en la esquina superior derecha */
+.rutina-card-actions-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rutina-action-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(138, 43, 226, 0.3);
+  background: rgba(22, 17, 43, 0.8);
+  color: var(--rut-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rutina-action-icon-btn:hover {
+  background: rgba(138, 43, 226, 0.35);
+  border-color: var(--rut-neon-purple);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.rutina-action-icon-btn.btn-fav.active {
+  color: var(--rut-danger);
+  border-color: rgba(255, 71, 87, 0.6);
+  background: rgba(255, 71, 87, 0.15);
+}
+
+.rutina-action-icon-btn.btn-fav:hover {
+  color: #ff6b81;
+}
+
+.rutina-action-icon-btn.btn-copiar:hover {
+  border-color: var(--rut-cyan);
+  color: var(--rut-cyan);
+}
+
+.rutina-action-icon-btn.btn-editar:hover {
+  border-color: var(--rut-cyan);
+  color: var(--rut-cyan);
+}
+
+.rutina-action-icon-btn.btn-eliminar:hover {
+  border-color: var(--rut-danger);
+  color: var(--rut-danger);
+  background: rgba(255, 71, 87, 0.15);
+}
+
+/* Lista directa de ejercicios dentro de la tarjeta */
+.rutina-ejercicios-container {
+  background: var(--rut-bg-card-inner);
+  border: 1px solid rgba(138, 43, 226, 0.25);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rutina-ejercicio-direct-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 6px;
+  border-bottom: 1px dashed rgba(138, 43, 226, 0.2);
+}
+
+.rutina-ejercicio-direct-row:last-child {
+  border-bottom: none;
+}
+
+.rutina-ejercicio-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rutina-ejercicio-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rut-text-muted);
+  min-width: 18px;
+}
+
+/* Espacio reservado para Miniatura/GIF de BD */
+.rutina-ejercicio-thumb-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(138, 43, 226, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.rutina-ejercicio-gif-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rutina-ejercicio-thumb-placeholder {
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rutina-ejercicio-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rutina-ejercicio-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rutina-ejercicio-musculo {
+  font-size: 11.5px;
+  color: var(--rut-text-muted);
+  margin-top: 1px;
+}
+
+.rutina-ejercicio-metrics-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rut-cyan);
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.rutina-ejercicio-peso-badge {
+  background: rgba(138, 43, 226, 0.25);
+  color: #ffffff;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* ─────────────────────────────────────────────────────────
+   5. BORRADOR SIMPLIFICADO DE CREACIÓN / EDICIÓN (SIN MODALES)
+   ───────────────────────────────────────────────────────── */
+.rutina-draft-panel {
+  background: var(--rut-bg-card);
+  border: 1px solid var(--rut-neon-purple);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rutina-draft-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(138, 43, 226, 0.25);
+  padding-bottom: 14px;
+}
+
+.rutina-draft-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.rutina-draft-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: var(--rut-text-muted);
+}
+
+.rutina-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rutina-form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rut-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rutina-input-text,
+.rutina-select {
+  width: 100%;
+  background: rgba(15, 11, 29, 0.9);
+  border: 1px solid rgba(138, 43, 226, 0.4);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #ffffff;
+  font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.rutina-input-text:focus,
+.rutina-select:focus {
+  border-color: var(--rut-cyan);
+  box-shadow: 0 0 10px var(--rut-cyan-glow);
+}
+
+.rutina-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Sección de Ejercicios del Borrador con Inputs Inline */
+.rutina-draft-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rut-cyan);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.rutina-draft-ejercicios-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rutina-draft-item-card {
+  background: var(--rut-bg-card-inner);
+  border: 1px solid rgba(138, 43, 226, 0.35);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.rutina-draft-item-card:hover {
+  border-color: rgba(0, 210, 255, 0.5);
+}
+
+.rutina-draft-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Inputs inline para Series, Repeticiones y Peso */
+.rutina-draft-inline-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.rutina-inline-metric-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.rutina-inline-metric-label {
+  font-size: 10px;
+  color: var(--rut-text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.rutina-inline-metric-input {
+  width: 58px;
+  background: rgba(22, 17, 43, 0.95);
+  border: 1px solid rgba(138, 43, 226, 0.45);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 4px;
+  outline: none;
+}
+
+.rutina-inline-metric-input:focus {
+  border-color: var(--rut-cyan);
+}
+
+.rutina-draft-delete-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 71, 87, 0.12);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  color: var(--rut-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.rutina-draft-delete-btn:hover {
+  background: rgba(255, 71, 87, 0.25);
+  border-color: var(--rut-danger);
+}
+
+/* Catálogo de Ejercicios Disponibles para sumar al borrador */
+.rutina-catalogo-container {
+  border-top: 1px solid rgba(138, 43, 226, 0.3);
+  padding-top: 18px;
+  margin-top: 8px;
+}
+
+.rutina-catalogo-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(14, 11, 28, 0.9);
+  border: 1px solid rgba(138, 43, 226, 0.4);
+  border-radius: 10px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+}
+
+.rutina-catalogo-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 13.5px;
+  outline: none;
+}
+
+.rutina-catalogo-search-input::placeholder {
+  color: var(--rut-text-muted);
+}
+
+.rutina-catalogo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.rutina-catalogo-item {
+  background: rgba(18, 14, 36, 0.85);
+  border: 1px solid rgba(138, 43, 226, 0.25);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.rutina-catalogo-item:hover {
+  border-color: var(--rut-cyan);
+  background: rgba(24, 18, 48, 0.95);
+}
+
+.btn-catalogo-agregar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 210, 255, 0.15);
+  border: 1px solid var(--rut-cyan);
+  color: var(--rut-cyan);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.btn-catalogo-agregar:hover {
+  background: var(--rut-cyan);
+  color: #0c0919;
+}
+
+.btn-catalogo-agregar.agregado {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--rut-success);
+  color: #6ee7b7;
+}
+
+/* Botones inferiores Guardar / Cancelar */
+.rutina-draft-bottom-bar {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.btn-draft-guardar {
+  flex: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--rut-neon-purple), var(--rut-neon-purple-soft));
+  border: none;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 18px var(--rut-neon-glow);
+  transition: all 0.2s ease;
+}
+
+.btn-draft-guardar:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(138, 43, 226, 0.6);
+  transform: translateY(-1px);
+}
+
+.btn-draft-cancelar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--rut-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-draft-cancelar:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Estado vacío / Loading */
+.rutinas-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--rut-bg-card);
+  border: 1px dashed rgba(138, 43, 226, 0.35);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.rutinas-empty-icon {
+  color: #a78bfa;
+  margin-bottom: 4px;
+}
+
+.rutinas-empty-text {
+  color: var(--rut-text-muted);
+  font-size: 14px;
+  max-width: 360px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Toast de notificación */
+.rutinas-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e1738;
+  border: 1px solid var(--rut-cyan);
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  animation: slideUpToast 0.25s ease-out;
+}
+
+.rutinas-toast.error {
+  border-color: var(--rut-danger);
+  color: #ffa4ab;
+}
+
+@keyframes slideUpToast {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 15px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   6. RESPONSIVE DESIGN (@media max-width: 600px)
+   ───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .rutinas-container {
+    padding: 14px 10px 80px;
+  }
+
+  .rutinas-header-title {
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+
+  .rutinas-nav-tabs {
+    margin-bottom: 14px;
+  }
+
+  .rutinas-nav-tab-btn {
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+
+  .rutinas-direct-card {
+    padding: 14px;
+    border-radius: 14px;
+    gap: 12px;
+  }
+
+  .rutina-card-top {
+    gap: 8px;
+  }
+
+  .rutina-card-title {
+    font-size: 16px;
+  }
+
+  .rutina-action-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .rutina-ejercicio-direct-row {
+    padding: 6px 2px;
+    gap: 8px;
+  }
+
+  .rutina-ejercicio-thumb-box {
+    width: 42px;
+    height: 42px;
+  }
+
+  .rutina-ejercicio-name {
+    font-size: 12.5px;
+  }
+
+  .rutina-ejercicio-metrics-pill {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .rutina-draft-panel {
+    padding: 16px;
+    border-radius: 14px;
+    gap: 14px;
+  }
+
+  .rutina-form-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .rutina-draft-item-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .rutina-draft-inline-metrics {
+    justify-content: space-between;
+    width: 100%;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(138, 43, 226, 0.2);
+  }
+
+  .rutina-inline-metric-input {
+    width: 64px;
+  }
+
+  .rutina-draft-bottom-bar {
+    flex-direction: column;
+  }
+
+  .btn-draft-guardar,
+  .btn-draft-cancelar {
+    width: 100%;
+  }
+
+  .rutina-catalogo-grid {
+    grid-template-columns: 1fr;
+    max-height: 240px;
+  }
+}

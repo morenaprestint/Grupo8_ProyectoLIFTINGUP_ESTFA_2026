@@ -1,54 +1,105 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getRutinas, createRutina, updateRutina, deleteRutina, getEjercicios } from '../../services/api';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+    Heart,
+    Copy,
+    Plus,
+    Trash2,
+    Pencil,
+    Search,
+    Dumbbell,
+    Calendar,
+    ArrowLeft,
+    Check,
+    X,
+    Filter,
+    Sparkles
+} from 'lucide-react';
+import {
+    getRutinas,
+    createRutina,
+    updateRutina,
+    deleteRutina,
+    getEjercicios
+} from '../../services/api';
 import { getCurrentUser } from '../../features/authService';
-import '../../styles/adminDashboard.css';
+import '../../styles/rutinasView.css';
 
-const FORM_RUTINA_INICIAL = { nombre: '', descripcion: '', dia_asignado: '', es_favorita: 0 };
+const FORM_RUTINA_INICIAL = {
+    nombre: '',
+    descripcion: '',
+    dia_asignado: '',
+    es_favorita: 0
+};
+
+const CATEGORIAS_FILTRO = [
+    'Todas',
+    'Piernas',
+    'Pecho',
+    'Espalda / Hombros',
+    'Brazos',
+    'Core / Abdomen'
+];
 
 function RutinasView() {
     const user = getCurrentUser();
-    // 2 pestañas principales requeridas: 'crear' ('Crear Rutina Personalizada') y 'mis-rutinas' ('Mis Rutinas / Favoritas')
-    const [tab, setTab] = useState('mis-rutinas');
-    const [filtroFavoritas, setFiltroFavoritas] = useState(false); // Subfiltro dentro de Mis Rutinas
+    const userId = user?.id ?? user?.id_usuario;
 
-    const [rutinas, setRutinas] = useState([]);
-    const [ejercicios, setEjercicios] = useState([]);
+    // Pestaña principal: 'disponibles' (Rutinas Disponibles / Predefinidas) | 'mis-rutinas' (Mis Rutinas)
+    const [activeTab, setActiveTab] = useState('disponibles');
+
+    // Filtro por Chips / Tags horizontales
+    const [categoriaActiva, setCategoriaActiva] = useState('Todas');
+    const [filtroFavoritas, setFiltroFavoritas] = useState(false);
+
+    // Listas de datos
+    const [rutinasDisponibles, setRutinasDisponibles] = useState([]);
+    const [misRutinas, setMisRutinas] = useState([]);
+    const [ejerciciosCatalogo, setEjerciciosCatalogo] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Estado para Crear / Editar Rutina
+    // Estado para modo Borrador (Crear / Editar Rutina)
+    const [modoBorrador, setModoBorrador] = useState(false);
     const [rutinaEditandoId, setRutinaEditandoId] = useState(null);
     const [formRutina, setFormRutina] = useState(FORM_RUTINA_INICIAL);
-    const [rutinaEjercicios, setRutinaEjercicios] = useState([]);
-    const [ejercicioSeleccionadoId, setEjercicioSeleccionadoId] = useState('');
+    const [draftEjercicios, setDraftEjercicios] = useState([]);
     const [guardando, setGuardando] = useState(false);
 
+    // Búsqueda y filtro dentro del catálogo de ejercicios en el borrador
+    const [busquedaCatalogo, setBusquedaCatalogo] = useState('');
+    const [categoriaCatalogo, setCategoriaCatalogo] = useState('Todas');
+
+    // Toast de notificación
     const [toast, setToast] = useState({ msg: '', tipo: 'success' });
     const mostrarToast = (msg, tipo = 'success') => {
         setToast({ msg, tipo });
         setTimeout(() => setToast({ msg: '', tipo: 'success' }), 3200);
     };
 
-    const userId = user?.id ?? user?.id_usuario;
-
+    // ─── Carga de datos ──────────────────────────────────────────────────────────
     const cargarDatos = useCallback(async () => {
         setLoading(true);
         try {
-            // Se obtienen las rutinas del atleta (solo_usuario = true para excluir las del sistema)
-            const [resRutinas, resEjercicios] = await Promise.all([
-                getRutinas(userId || '', false, true),
+            const [resPrearmadas, resUsuario, resEjercicios] = await Promise.all([
+                getRutinas('', true), // prearmadas = true (id_usuario IS NULL)
+                getRutinas(userId || '', false, true), // solo_usuario = true
                 getEjercicios()
             ]);
-            if (resRutinas?.success && Array.isArray(resRutinas.data)) {
-                // Filtro defensivo estricto: solo rutinas creadas por el propio atleta
-                const soloPropias = resRutinas.data.filter(r => r.id_usuario != null && Number(r.id_usuario) === Number(userId));
-                setRutinas(soloPropias);
+
+            if (resPrearmadas?.success && Array.isArray(resPrearmadas.data)) {
+                setRutinasDisponibles(resPrearmadas.data);
+            }
+            if (resUsuario?.success && Array.isArray(resUsuario.data)) {
+                const soloPropias = resUsuario.data.filter(
+                    r => r.id_usuario != null && Number(r.id_usuario) === Number(userId)
+                );
+                setMisRutinas(soloPropias);
             }
             if (resEjercicios?.success && Array.isArray(resEjercicios.data)) {
-                setEjercicios(resEjercicios.data);
+                setEjerciciosCatalogo(resEjercicios.data);
             }
         } catch (error) {
             console.error('Error al cargar datos de rutinas:', error);
-            mostrarToast('Error al cargar rutinas y ejercicios', 'error');
+            mostrarToast('Error al cargar las rutinas del sistema', 'error');
         } finally {
             setLoading(false);
         }
@@ -58,42 +109,115 @@ function RutinasView() {
         cargarDatos();
     }, [cargarDatos]);
 
-    // Agregar ejercicio del catálogo a la rutina
-    const agregarEjercicioARutina = () => {
-        if (!ejercicioSeleccionadoId) {
-            return mostrarToast('Selecciona un ejercicio del catálogo', 'error');
+    // ─── Lógica de filtrado por categoría ────────────────────────────────────────
+    const coincideCategoria = (rutina, categoria) => {
+        if (categoria === 'Todas') return true;
+        const norm = categoria.toLowerCase();
+        const nombreRut = (rutina.nombre || '').toLowerCase();
+        const descRut = (rutina.descripcion || '').toLowerCase();
+
+        // Chequeo por nombre/descripción de la rutina
+        if (norm.includes('pierna') && (nombreRut.includes('pierna') || descRut.includes('pierna'))) return true;
+        if (norm.includes('pecho') && (nombreRut.includes('pecho') || descRut.includes('pecho'))) return true;
+        if (norm.includes('espalda') && (nombreRut.includes('espalda') || nombreRut.includes('hombro') || descRut.includes('espalda') || descRut.includes('hombro'))) return true;
+        if (norm.includes('brazo') && (nombreRut.includes('brazo') || nombreRut.includes('bicep') || nombreRut.includes('tricep'))) return true;
+        if (norm.includes('core') && (nombreRut.includes('core') || nombreRut.includes('abdomen') || nombreRut.includes('abs'))) return true;
+
+        // Chequeo por los ejercicios vinculados
+        if (Array.isArray(rutina.ejercicios) && rutina.ejercicios.length > 0) {
+            return rutina.ejercicios.some(ej => {
+                const gm = (ej.grupo_muscular || '').toLowerCase();
+                const nm = (ej.nombre || '').toLowerCase();
+                if (norm.includes('pierna')) return gm.includes('pierna') || gm.includes('cuadricep') || gm.includes('gluteo') || nm.includes('sentadilla') || nm.includes('prensa') || nm.includes('estocada');
+                if (norm.includes('pecho')) return gm.includes('pecho') || nm.includes('press') || nm.includes('pecho');
+                if (norm.includes('espalda')) return gm.includes('espalda') || gm.includes('hombro') || nm.includes('remo') || nm.includes('jalon') || nm.includes('dominada');
+                if (norm.includes('brazo')) return gm.includes('brazo') || gm.includes('bicep') || gm.includes('tricep');
+                if (norm.includes('core')) return gm.includes('abdomen') || gm.includes('core') || nm.includes('plank');
+                return gm.includes(norm);
+            });
         }
-        const ej = ejercicios.find(e => e.id_ejercicio === parseInt(ejercicioSeleccionadoId, 10));
-        if (ej) {
-            setRutinaEjercicios(prev => [
-                ...prev,
-                {
-                    id_ejercicio: ej.id_ejercicio,
-                    nombre: ej.nombre,
-                    grupo_muscular: ej.grupo_muscular,
-                    gif: ej.gif,
-                    series: 3,
-                    repeticiones: 12,
-                    peso: 0
-                }
-            ]);
-            setEjercicioSeleccionadoId('');
+        return false;
+    };
+
+    // Lista de rutinas filtradas según la pestaña activa
+    const rutinasMostradas = useMemo(() => {
+        let lista = activeTab === 'disponibles' ? rutinasDisponibles : misRutinas;
+
+        if (activeTab === 'mis-rutinas' && filtroFavoritas) {
+            lista = lista.filter(r => r.es_favorita === 1);
+        }
+
+        if (categoriaActiva !== 'Todas') {
+            lista = lista.filter(r => coincideCategoria(r, categoriaActiva));
+        }
+
+        return lista;
+    }, [activeTab, rutinasDisponibles, misRutinas, filtroFavoritas, categoriaActiva]);
+
+    // ─── Acciones sobre Rutinas ──────────────────────────────────────────────────
+    // Alternar Favorito en Rutina del Usuario
+    const handleToggleFavorita = async (rutina) => {
+        const nuevoEstado = rutina.es_favorita === 1 ? 0 : 1;
+        try {
+            await updateRutina(rutina.id_rutina, { es_favorita: nuevoEstado });
+            mostrarToast(nuevoEstado === 1 ? 'Añadida a favoritas' : 'Removida de favoritas', 'success');
+            cargarDatos();
+        } catch (error) {
+            mostrarToast('Error al actualizar favorita', 'error');
         }
     };
 
-    const updateEjercicioRutina = (index, field, value) => {
-        setRutinaEjercicios(prev => {
-            const copy = [...prev];
-            copy[index][field] = value;
-            return copy;
-        });
+    // Copiar una Rutina Predefinida a "Mis Rutinas"
+    const handleCopiarAMisRutinas = async (rutina) => {
+        try {
+            const ejerciciosPayload = (rutina.ejercicios || []).map(e => ({
+                id_ejercicio: e.id_ejercicio,
+                series: Number(e.series) || 4,
+                repeticiones: Number(e.repeticiones) || 12,
+                peso: Number(e.peso) || 0
+            }));
+
+            const res = await createRutina({
+                nombre: `${rutina.nombre} (Copia)`,
+                descripcion: rutina.descripcion || '',
+                id_usuario: userId,
+                es_favorita: 0,
+                dia_asignado: rutina.dia_asignado || '',
+                ejercicios: ejerciciosPayload
+            });
+
+            if (res?.success) {
+                mostrarToast(`¡"${rutina.nombre}" copiada a Mis Rutinas!`, 'success');
+                cargarDatos();
+                // Ofrecer pasar a Mis Rutinas
+                setActiveTab('mis-rutinas');
+            }
+        } catch (error) {
+            console.error('Error al copiar rutina:', error);
+            mostrarToast('No se pudo copiar la rutina', 'error');
+        }
     };
 
-    const removerEjercicioRutina = (index) => {
-        setRutinaEjercicios(prev => prev.filter((_, i) => i !== index));
+    // Eliminar Rutina propia
+    const handleEliminarRutina = async (idRutina, nombre) => {
+        if (!window.confirm(`¿Deseas eliminar la rutina "${nombre}"? Esta acción no se puede deshacer.`)) return;
+        try {
+            await deleteRutina(idRutina);
+            mostrarToast('Rutina eliminada correctamente', 'success');
+            cargarDatos();
+        } catch (error) {
+            mostrarToast('Error al eliminar rutina', 'error');
+        }
     };
 
-    // Iniciar edición de una rutina existente
+    // ─── Flujo de Creación / Edición (Borrador sin modales) ───────────────────────
+    const iniciarCreacion = () => {
+        setRutinaEditandoId(null);
+        setFormRutina(FORM_RUTINA_INICIAL);
+        setDraftEjercicios([]);
+        setModoBorrador(true);
+    };
+
     const iniciarEdicion = (rutina) => {
         setRutinaEditandoId(rutina.id_rutina);
         setFormRutina({
@@ -104,213 +228,440 @@ function RutinasView() {
         });
 
         if (Array.isArray(rutina.ejercicios) && rutina.ejercicios.length > 0) {
-            setRutinaEjercicios(
+            setDraftEjercicios(
                 rutina.ejercicios.map(e => ({
                     id_ejercicio: e.id_ejercicio,
                     nombre: e.nombre,
                     grupo_muscular: e.grupo_muscular,
                     gif: e.gif,
-                    series: Number(e.series) || 3,
+                    series: Number(e.series) || 4,
                     repeticiones: Number(e.repeticiones) || 12,
                     peso: Number(e.peso) || 0
                 }))
             );
         } else {
-            setRutinaEjercicios([]);
+            setDraftEjercicios([]);
         }
 
-        setTab('crear');
-        mostrarToast(`Editando rutina "${rutina.nombre}"`, 'success');
+        setModoBorrador(true);
     };
 
-    const cancelarEdicion = () => {
+    const cancelarBorrador = () => {
+        setModoBorrador(false);
         setRutinaEditandoId(null);
         setFormRutina(FORM_RUTINA_INICIAL);
-        setRutinaEjercicios([]);
-        setTab('mis-rutinas');
+        setDraftEjercicios([]);
     };
 
-    // Guardar (Crear nueva o Actualizar existente)
+    // Agregar ejercicio directamente del catálogo al borrador SIN MODALES
+    const handleAgregarEjercicioAlBorrador = (ejercicio) => {
+        // Verificar si ya está en el borrador
+        const existe = draftEjercicios.some(e => e.id_ejercicio === ejercicio.id_ejercicio);
+        if (existe) {
+            return mostrarToast(`"${ejercicio.nombre}" ya está en la lista`, 'error');
+        }
+
+        // Añadir directamente con valores predeterminados (4 series, 12 reps, 0 kg)
+        setDraftEjercicios(prev => [
+            ...prev,
+            {
+                id_ejercicio: ejercicio.id_ejercicio,
+                nombre: ejercicio.nombre,
+                grupo_muscular: ejercicio.grupo_muscular,
+                gif: ejercicio.gif,
+                series: 4,
+                repeticiones: 12,
+                peso: 0
+            }
+        ]);
+
+        mostrarToast(`"${ejercicio.nombre}" añadido al borrador`, 'success');
+    };
+
+    // Actualizar métricas inline directamente en la fila del borrador
+    const handleUpdateMetricaInline = (index, campo, valor) => {
+        setDraftEjercicios(prev => {
+            const copia = [...prev];
+            copia[index][campo] = valor;
+            return copia;
+        });
+    };
+
+    // Quitar ejercicio del borrador
+    const handleRemoverEjercicioBorrador = (index) => {
+        setDraftEjercicios(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Guardar Borrador (Creación o Actualización)
     const handleGuardarRutina = async () => {
         if (!formRutina.nombre.trim()) {
-            return mostrarToast('El nombre de la rutina es obligatorio', 'error');
+            return mostrarToast('Ingresa un nombre para la rutina', 'error');
         }
-        if (rutinaEjercicios.length === 0) {
-            return mostrarToast('Agrega al menos un ejercicio del catálogo oficial', 'error');
+        if (draftEjercicios.length === 0) {
+            return mostrarToast('Agrega al menos un ejercicio a la rutina', 'error');
         }
 
         setGuardando(true);
         try {
+            const ejerciciosPayload = draftEjercicios.map(e => ({
+                id_ejercicio: e.id_ejercicio,
+                series: Math.max(1, Number(e.series) || 1),
+                repeticiones: Math.max(1, Number(e.repeticiones) || 1),
+                peso: Math.max(0, Number(e.peso) || 0)
+            }));
+
             if (rutinaEditandoId) {
-                // Actualización (PUT)
+                // Actualizar
                 const res = await updateRutina(rutinaEditandoId, {
                     ...formRutina,
-                    ejercicios: rutinaEjercicios
+                    ejercicios: ejerciciosPayload
                 });
                 if (res?.success) {
-                    mostrarToast('¡Rutina actualizada correctamente!', 'success');
-                    cancelarEdicion();
+                    mostrarToast('Rutina actualizada exitosamente', 'success');
+                    cancelarBorrador();
                     cargarDatos();
                 }
             } else {
-                // Creación (POST)
+                // Crear nueva
                 const res = await createRutina({
                     ...formRutina,
                     id_usuario: userId,
-                    ejercicios: rutinaEjercicios
+                    ejercicios: ejerciciosPayload
                 });
                 if (res?.success) {
-                    mostrarToast('¡Tu rutina personalizada ha sido creada exitosamente!', 'success');
-                    setFormRutina(FORM_RUTINA_INICIAL);
-                    setRutinaEjercicios([]);
-                    setTab('mis-rutinas');
+                    mostrarToast('¡Rutina creada con éxito!', 'success');
+                    cancelarBorrador();
+                    setActiveTab('mis-rutinas');
                     cargarDatos();
                 }
             }
         } catch (error) {
-            mostrarToast(error.message || 'Error al procesar rutina', 'error');
+            mostrarToast(error.message || 'Error al guardar la rutina', 'error');
         } finally {
             setGuardando(false);
         }
     };
 
-    // Alternar estado favorito
-    const handleToggleFavorita = async (rutina) => {
-        const nuevoEstado = rutina.es_favorita === 1 ? 0 : 1;
-        try {
-            await updateRutina(rutina.id_rutina, { es_favorita: nuevoEstado });
-            mostrarToast(nuevoEstado === 1 ? 'Añadida a favoritas ⭐' : 'Removida de favoritas', 'success');
-            cargarDatos();
-        } catch (error) {
-            mostrarToast('Error al actualizar favorita', 'error');
-        }
-    };
+    // Ejercicios disponibles filtrados para el catálogo dentro del borrador
+    const ejerciciosCatalogoFiltrados = useMemo(() => {
+        return ejerciciosCatalogo.filter(ej => {
+            const coincideTexto = busquedaCatalogo === '' ||
+                (ej.nombre || '').toLowerCase().includes(busquedaCatalogo.toLowerCase()) ||
+                (ej.grupo_muscular || '').toLowerCase().includes(busquedaCatalogo.toLowerCase());
 
-    // Eliminar rutina propia
-    const handleEliminarRutina = async (idRutina, nombre) => {
-        if (!window.confirm(`¿Seguro que deseas eliminar tu rutina "${nombre}"? Esta acción no se puede deshacer.`)) return;
-        try {
-            await deleteRutina(idRutina);
-            mostrarToast('Rutina eliminada correctamente', 'success');
-            if (rutinaEditandoId === idRutina) {
-                cancelarEdicion();
-            }
-            cargarDatos();
-        } catch (error) {
-            mostrarToast('Error al eliminar rutina', 'error');
-        }
-    };
+            const coincideGrupo = categoriaCatalogo === 'Todas' ||
+                (ej.grupo_muscular || '').toLowerCase().includes(categoriaCatalogo.toLowerCase().split(' ')[0]);
 
-    // Rutinas a mostrar en la pestaña "Mis Rutinas / Favoritas"
-    const rutinasFiltradas = filtroFavoritas
-        ? rutinas.filter(r => r.es_favorita === 1)
-        : rutinas;
-
-    const totalFavoritas = rutinas.filter(r => r.es_favorita === 1).length;
+            return coincideTexto && coincideGrupo;
+        });
+    }, [ejerciciosCatalogo, busquedaCatalogo, categoriaCatalogo]);
 
     return (
-        <div style={{ width: '100%', padding: '16px 14px 100px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <h1 className="admin-titulo" style={{ textAlign: 'center', marginBottom: '18px', fontSize: '24px' }}>
-                RUTINAS DE ENTRENAMIENTO
+        <div className="rutinas-container">
+            {/* Título de la sección */}
+            <h1 className="rutinas-header-title">
+                {modoBorrador
+                    ? (rutinaEditandoId ? 'Editar Rutina' : 'Nueva Rutina')
+                    : 'Rutinas de Entrenamiento'}
             </h1>
 
-            {/* 2 PESTAÑAS PRINCIPALES DIFERENCIADAS */}
-            <div className="tipo-usuario-tabs" style={{ display: 'flex', gap: '10px', marginBottom: '22px' }}>
-                <button
-                    type="button"
-                    className={`tipo-usuario-btn ${tab === 'crear' ? 'seleccionado' : ''}`}
-                    onClick={() => setTab('crear')}
-                    style={{ flex: 1, padding: '12px 8px', fontSize: '14px', fontWeight: '600' }}
-                >
-                    {rutinaEditandoId ? 'Editar rutina' : 'Crear rutina'}
-                </button>
-                <button
-                    type="button"
-                    className={`tipo-usuario-btn ${tab === 'mis-rutinas' ? 'seleccionado' : ''}`}
-                    onClick={() => setTab('mis-rutinas')}
-                    style={{ flex: 1, padding: '12px 8px', fontSize: '14px', fontWeight: '600' }}
-                >
-                    Mis rutinas
-                </button>
-            </div>
+            {/* Notificación Toast */}
+            {toast.msg && (
+                <div className={`rutinas-toast ${toast.tipo}`}>
+                    {toast.tipo === 'success' ? <Check size={16} /> : <X size={16} />}
+                    <span>{toast.msg}</span>
+                </div>
+            )}
 
-            {toast.msg && <div className={`toast ${toast.tipo}`}>{toast.msg}</div>}
+            {/* ══════════════════════════════════════════════════════════════════════
+               VISTA PRINCIPAL: LISTADO DE RUTINAS (DISPONIBLES Y MIS RUTINAS)
+               ══════════════════════════════════════════════════════════════════════ */}
+            {!modoBorrador ? (
+                <>
+                    {/* 1. Barra de Pestañas Principales */}
+                    <div className="rutinas-nav-tabs">
+                        <button
+                            type="button"
+                            className={`rutinas-nav-tab-btn ${activeTab === 'disponibles' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveTab('disponibles');
+                                setCategoriaActiva('Todas');
+                            }}
+                        >
+                            <Sparkles size={16} />
+                            Rutinas Disponibles
+                        </button>
+                        <button
+                            type="button"
+                            className={`rutinas-nav-tab-btn ${activeTab === 'mis-rutinas' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveTab('mis-rutinas');
+                                setCategoriaActiva('Todas');
+                            }}
+                        >
+                            <Dumbbell size={16} />
+                            Mis Rutinas
+                        </button>
+                    </div>
 
-            {/* ─── PESTAÑA 1: CREAR / EDITAR RUTINA PERSONALIZADA ────────── */}
-            {tab === 'crear' && (
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '14px',
-                        background: '#181528',
-                        padding: '22px',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(138, 43, 226, 0.7)',
-                        boxShadow: '0 6px 20px rgba(0,0,0,0.35)',
-                        maxWidth: '850px',
-                        margin: '0 auto'
-                    }}
-                >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <h2 style={{ color: 'white', margin: 0, fontSize: '19px', fontWeight: '600' }}>
-                                {rutinaEditandoId ? 'Editar Rutina Personalizada' : 'Crear Nueva Rutina'}
-                            </h2>
-                            <p style={{ color: '#a0a0a0', fontSize: '13px', margin: '4px 0 0 0' }}>
-                                {rutinaEditandoId
-                                    ? 'Modifica los datos generales y ajusta los ejercicios, series y repeticiones.'
-                                    : 'Diseña tu propio plan seleccionando ejercicios oficiales del gimnasio.'}
-                            </p>
-                        </div>
-                        {rutinaEditandoId && (
+                    {/* 2. Barra de Filtros por Chips / Tags Horizontales */}
+                    <div className="rutinas-chips-bar">
+                        {CATEGORIAS_FILTRO.map(cat => (
+                            <button
+                                key={cat}
+                                type="button"
+                                className={`rutinas-chip-btn ${categoriaActiva === cat ? 'active' : ''}`}
+                                onClick={() => setCategoriaActiva(cat)}
+                            >
+                                <Filter size={13} />
+                                {cat}
+                            </button>
+                        ))}
+
+                        {/* En Mis Rutinas: Chip adicional para ver solo favoritas */}
+                        {activeTab === 'mis-rutinas' && (
                             <button
                                 type="button"
-                                className="btn-cancelar"
-                                onClick={cancelarEdicion}
-                                style={{ padding: '6px 14px', fontSize: '12px' }}
+                                className={`rutinas-chip-btn chip-favoritas ${filtroFavoritas ? 'active' : ''}`}
+                                onClick={() => setFiltroFavoritas(!filtroFavoritas)}
                             >
-                                Cancelar Edición
+                                <Heart size={13} fill={filtroFavoritas ? 'currentColor' : 'none'} />
+                                Favoritas
                             </button>
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--admin-celeste, #00d2ff)' }}>
-                            Nombre de la Rutina *
-                        </label>
+                    {/* 3. Barra de Acción Sub-superior: Botón "+ Crear Rutina" */}
+                    <div className="rutinas-sub-action-bar">
+                        <span style={{ fontSize: '13px', color: 'var(--rut-text-muted)' }}>
+                            Mostrando {rutinasMostradas.length} {rutinasMostradas.length === 1 ? 'rutina' : 'rutinas'}
+                        </span>
+                        {activeTab === 'mis-rutinas' && (
+                            <button
+                                type="button"
+                                className="btn-crear-rutina-cta"
+                                onClick={iniciarCreacion}
+                            >
+                                <Plus size={16} />
+                                Crear Rutina
+                            </button>
+                        )}
+                    </div>
+
+                    {/* 4. Listado de Tarjetas de Rutina Directas */}
+                    {loading ? (
+                        <div className="rutinas-empty-state">
+                            <Dumbbell size={36} className="rutinas-empty-icon" />
+                            <p className="rutinas-empty-text">Cargando rutinas de entrenamiento...</p>
+                        </div>
+                    ) : rutinasMostradas.length > 0 ? (
+                        <div className="rutinas-list-grid">
+                            {rutinasMostradas.map(rutina => (
+                                <article
+                                    key={rutina.id_rutina}
+                                    className={`rutina-direct-card ${rutina.es_favorita === 1 ? 'favorita' : ''}`}
+                                >
+                                    {/* Cabecera de la Tarjeta */}
+                                    <div className="rutina-card-top">
+                                        <div className="rutina-card-meta">
+                                            <div className="rutina-card-title-row">
+                                                <h3 className="rutina-card-title">{rutina.nombre}</h3>
+                                                {rutina.dia_asignado && (
+                                                    <span className="rutina-card-badge badge-dia">
+                                                        <Calendar size={11} />
+                                                        {rutina.dia_asignado}
+                                                    </span>
+                                                )}
+                                                {rutina.id_usuario == null && (
+                                                    <span className="rutina-card-badge badge-prearmada">
+                                                        Oficial
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {rutina.descripcion && (
+                                                <p className="rutina-card-desc">{rutina.descripcion}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Acciones en la Esquina Superior Derecha (Iconos Lucide limpios) */}
+                                        <div className="rutina-card-actions-top">
+                                            {activeTab === 'disponibles' ? (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className="rutina-action-icon-btn btn-copiar"
+                                                        onClick={() => handleCopiarAMisRutinas(rutina)}
+                                                        title="Copiar y guardar en Mis Rutinas"
+                                                        aria-label="Copiar rutina"
+                                                    >
+                                                        <Copy size={16} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className={`rutina-action-icon-btn btn-fav ${rutina.es_favorita === 1 ? 'active' : ''}`}
+                                                        onClick={() => handleToggleFavorita(rutina)}
+                                                        title={rutina.es_favorita === 1 ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                                                        aria-label="Favorito"
+                                                    >
+                                                        <Heart
+                                                            size={16}
+                                                            fill={rutina.es_favorita === 1 ? 'currentColor' : 'none'}
+                                                        />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="rutina-action-icon-btn btn-editar"
+                                                        onClick={() => iniciarEdicion(rutina)}
+                                                        title="Editar rutina"
+                                                        aria-label="Editar rutina"
+                                                    >
+                                                        <Pencil size={15} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="rutina-action-icon-btn btn-eliminar"
+                                                        onClick={() => handleEliminarRutina(rutina.id_rutina, rutina.nombre)}
+                                                        title="Eliminar rutina"
+                                                        aria-label="Eliminar rutina"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Lista Directa de Ejercicios de la Rutina */}
+                                    <div className="rutina-ejercicios-container">
+                                        {Array.isArray(rutina.ejercicios) && rutina.ejercicios.length > 0 ? (
+                                            rutina.ejercicios.map((ej, index) => (
+                                                <div key={index} className="rutina-ejercicio-direct-row">
+                                                    <div className="rutina-ejercicio-left">
+                                                        <span className="rutina-ejercicio-num">{index + 1}.</span>
+
+                                                        {/* Miniatura / GIF desde la columna VARCHAR de BD */}
+                                                        <div className="rutina-ejercicio-thumb-box">
+                                                            {ej.gif ? (
+                                                                <img
+                                                                    src={ej.gif}
+                                                                    alt={ej.nombre}
+                                                                    className="rutina-ejercicio-gif-img"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.style.display = 'none';
+                                                                        if (e.currentTarget.nextSibling) {
+                                                                            e.currentTarget.nextSibling.style.display = 'flex';
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            ) : null}
+                                                            <div
+                                                                className="rutina-ejercicio-thumb-placeholder"
+                                                                style={{ display: ej.gif ? 'none' : 'flex' }}
+                                                            >
+                                                                <Dumbbell size={18} />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Información del ejercicio */}
+                                                        <div className="rutina-ejercicio-details">
+                                                            <span className="rutina-ejercicio-name">{ej.nombre}</span>
+                                                            <span className="rutina-ejercicio-musculo">
+                                                                {ej.grupo_muscular || 'General'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Badge de Series y Repeticiones */}
+                                                    <div className="rutina-ejercicio-metrics-pill">
+                                                        <span>{ej.series} series × {ej.repeticiones} reps</span>
+                                                        {Number(ej.peso) > 0 && (
+                                                            <span className="rutina-ejercicio-peso-badge">
+                                                                {ej.peso} kg
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p style={{ margin: '6px 0', fontSize: '12px', color: 'var(--rut-text-muted)' }}>
+                                                Sin ejercicios configurados en esta rutina.
+                                            </p>
+                                        )}
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="rutinas-empty-state">
+                            <Dumbbell size={40} className="rutinas-empty-icon" />
+                            <p className="rutinas-empty-text">
+                                {activeTab === 'disponibles'
+                                    ? 'No se encontraron rutinas predefinidas con el filtro seleccionado.'
+                                    : (filtroFavoritas
+                                        ? 'No tienes ninguna rutina marcada como favorita.'
+                                        : 'Aún no has creado ninguna rutina personalizada.')}
+                            </p>
+                            {activeTab === 'mis-rutinas' && !filtroFavoritas && (
+                                <button
+                                    type="button"
+                                    className="btn-crear-rutina-cta"
+                                    onClick={iniciarCreacion}
+                                    style={{ marginTop: '8px' }}
+                                >
+                                    <Plus size={16} />
+                                    Crear Mi Primera Rutina
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </>
+            ) : (
+                /* ══════════════════════════════════════════════════════════════════════
+                   VISTA BORRADOR: CREACIÓN / EDICIÓN SIMPLIFICADA (SIN MODALES)
+                   ══════════════════════════════════════════════════════════════════════ */
+                <div className="rutina-draft-panel">
+                    {/* Encabezado del borrador */}
+                    <div className="rutina-draft-header">
+                        <div>
+                            <h2 className="rutina-draft-title">
+                                {rutinaEditandoId ? 'Editar Rutina' : 'Crear Nueva Rutina'}
+                            </h2>
+                            <p className="rutina-draft-subtitle">
+                                Agrega ejercicios del catálogo y ajusta series, repeticiones y peso directamente.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            className="rutina-action-icon-btn"
+                            onClick={cancelarBorrador}
+                            title="Volver"
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                    </div>
+
+                    {/* Inputs principales de la rutina */}
+                    <div className="rutina-form-group">
+                        <label className="rutina-form-label">Nombre de la Rutina *</label>
                         <input
-                            className="input-modal"
-                            placeholder="Ej. Torso Pesado, Tren Inferior Potencia..."
+                            type="text"
+                            className="rutina-input-text"
+                            placeholder="Ej. Piernas Potencia, Torso Fuerza..."
                             value={formRutina.nombre}
                             onChange={e => setFormRutina({ ...formRutina, nombre: e.target.value })}
-                            style={{ marginBottom: '4px' }}
                         />
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--admin-celeste, #00d2ff)' }}>
-                            Descripción u Observaciones (opcional)
-                        </label>
-                        <textarea
-                            className="input-modal"
-                            placeholder="Notas personales, tiempos de descanso, enfoque del entrenamiento..."
-                            value={formRutina.descripcion}
-                            onChange={e => setFormRutina({ ...formRutina, descripcion: e.target.value })}
-                            style={{ minHeight: '65px', marginBottom: '4px' }}
-                        />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--admin-celeste, #00d2ff)' }}>
-                                Día Asignado en Calendario
-                            </label>
+                    <div className="rutina-form-grid-2">
+                        <div className="rutina-form-group">
+                            <label className="rutina-form-label">Día Asignado (opcional)</label>
                             <select
-                                className="input-modal"
+                                className="rutina-select"
                                 value={formRutina.dia_asignado || ''}
                                 onChange={e => setFormRutina({ ...formRutina, dia_asignado: e.target.value })}
-                                style={{ marginBottom: 0 }}
                             >
                                 <option value="">Sin día asignado</option>
                                 {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(d => (
@@ -319,333 +670,262 @@ function RutinasView() {
                             </select>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', justifyContent: 'center' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--admin-celeste, #00d2ff)' }}>
-                                Favorita
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'white', fontSize: '14px' }}>
+                        <div className="rutina-form-group" style={{ justifyContent: 'center' }}>
+                            <label className="rutina-form-label">Favorita</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13.5px', marginTop: '6px' }}>
                                 <input
                                     type="checkbox"
                                     checked={formRutina.es_favorita === 1}
                                     onChange={e => setFormRutina({ ...formRutina, es_favorita: e.target.checked ? 1 : 0 })}
-                                    style={{ width: '18px', height: '18px', accentColor: 'var(--admin-violet)' }}
+                                    style={{ width: '18px', height: '18px', accentColor: 'var(--rut-neon-purple)' }}
                                 />
-                                Marcar como favorita ⭐
+                                Marcar como favorita
                             </label>
                         </div>
                     </div>
 
-                    {/* SELECCIONAR EJERCICIO DEL CATÁLOGO */}
-                    <div style={{ borderTop: '1px solid rgba(140, 88, 211, 0.3)', paddingTop: '16px', marginTop: '6px' }}>
-                        <label style={{ fontSize: '13px', fontWeight: '600', color: 'white', display: 'block', marginBottom: '8px' }}>
-                            Añadir Ejercicio desde el Catálogo Oficial:
-                        </label>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <select
-                                className="input-modal"
-                                value={ejercicioSeleccionadoId}
-                                onChange={e => setEjercicioSeleccionadoId(e.target.value)}
-                                style={{ flex: 1, marginBottom: 0 }}
-                            >
-                                <option value="">Selecciona un ejercicio ({ejercicios.length} disponibles)...</option>
-                                {ejercicios.map(e => (
-                                    <option key={e.id_ejercicio} value={e.id_ejercicio}>
-                                        {e.nombre} ({e.grupo_muscular || 'Gral'})
-                                    </option>
-                                ))}
-                            </select>
-                            <button
-                                type="button"
-                                className="btn-guardar"
-                                onClick={agregarEjercicioARutina}
-                                style={{ padding: '0 20px', minHeight: '48px', borderRadius: '9px', fontWeight: 'bold' }}
-                                title="Agregar a la rutina"
-                            >
-                                + Agregar
-                            </button>
-                        </div>
+                    <div className="rutina-form-group">
+                        <label className="rutina-form-label">Descripción u Observaciones (opcional)</label>
+                        <input
+                            type="text"
+                            className="rutina-input-text"
+                            placeholder="Tiempos de descanso, enfoque del entrenamiento..."
+                            value={formRutina.descripcion || ''}
+                            onChange={e => setFormRutina({ ...formRutina, descripcion: e.target.value })}
+                        />
                     </div>
 
-                    {/* LISTA DE EJERCICIOS CONFIGURADOS EN LA RUTINA */}
-                    <div style={{ marginTop: '10px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--admin-celeste, #00d2ff)', marginBottom: '10px' }}>
-                            Ejercicios incluidos ({rutinaEjercicios.length}):
-                        </div>
+                    {/* ─────────────────────────────────────────────────────────────
+                       LISTA DE EJERCICIOS INCLUIDOS EN EL BORRADOR (INPUTS INLINE)
+                       ───────────────────────────────────────────────────────────── */}
+                    <div className="rutina-draft-section-title">
+                        <Dumbbell size={16} />
+                        Ejercicios en la Rutina ({draftEjercicios.length})
+                    </div>
 
-                        {rutinaEjercicios.length > 0 ? (
-                            <div style={{ display: 'grid', gap: '12px' }}>
-                                {rutinaEjercicios.map((e, index) => (
-                                    <div
-                                        key={index}
-                                        style={{
-                                            border: '1px solid rgba(0, 210, 255, 0.4)',
-                                            background: 'rgba(20, 14, 55, 0.85)',
-                                            padding: '12px 16px',
-                                            borderRadius: '12px',
-                                            display: 'flex',
-                                            gap: '14px',
-                                            alignItems: 'center'
-                                        }}
-                                    >
-                                        {e.gif ? (
-                                            <img
-                                                src={e.gif}
-                                                alt={e.nombre}
-                                                style={{ width: '56px', height: '56px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
-                                                onError={(ev) => { ev.currentTarget.style.display = 'none'; }}
+                    {draftEjercicios.length > 0 ? (
+                        <div className="rutina-draft-ejercicios-list">
+                            {draftEjercicios.map((item, index) => (
+                                <div key={index} className="rutina-draft-item-card">
+                                    <div className="rutina-draft-item-info">
+                                        {/* Miniatura GIF */}
+                                        <div className="rutina-ejercicio-thumb-box">
+                                            {item.gif ? (
+                                                <img
+                                                    src={item.gif}
+                                                    alt={item.nombre}
+                                                    className="rutina-ejercicio-gif-img"
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                        if (e.currentTarget.nextSibling) {
+                                                            e.currentTarget.nextSibling.style.display = 'flex';
+                                                        }
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <div
+                                                className="rutina-ejercicio-thumb-placeholder"
+                                                style={{ display: item.gif ? 'none' : 'flex' }}
+                                            >
+                                                <Dumbbell size={18} />
+                                            </div>
+                                        </div>
+
+                                        <div className="rutina-ejercicio-details">
+                                            <span className="rutina-ejercicio-name">{item.nombre}</span>
+                                            <span className="rutina-ejercicio-musculo">
+                                                {item.grupo_muscular || 'General'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* CONTROLES NUMÉRICOS INLINE (SERIES, REPETICIONES, PESO) */}
+                                    <div className="rutina-draft-inline-metrics">
+                                        <div className="rutina-inline-metric-box">
+                                            <span className="rutina-inline-metric-label">Series</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="99"
+                                                className="rutina-inline-metric-input"
+                                                value={item.series}
+                                                onChange={e => handleUpdateMetricaInline(index, 'series', e.target.value)}
                                             />
-                                        ) : (
-                                            <div style={{ width: '56px', height: '56px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#888', flexShrink: 0 }}>
-                                                Sin GIF
-                                            </div>
-                                        )}
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                <h5 style={{ margin: 0, color: 'white', fontSize: '15px' }}>{e.nombre}</h5>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removerEjercicioRutina(index)}
-                                                    style={{ background: 'transparent', border: 'none', color: '#ffb2b4', cursor: 'pointer', fontSize: '18px' }}
-                                                    title="Quitar ejercicio"
-                                                >
-                                                    ✕
-                                                </button>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                                                <div>
-                                                    <label style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>Series</label>
-                                                    <input
-                                                        type="number"
-                                                        className="input-modal"
-                                                        style={{ minHeight: '34px', padding: '4px 8px', marginBottom: 0 }}
-                                                        value={e.series}
-                                                        onChange={ev => updateEjercicioRutina(index, 'series', ev.target.value)}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>Reps</label>
-                                                    <input
-                                                        type="number"
-                                                        className="input-modal"
-                                                        style={{ minHeight: '34px', padding: '4px 8px', marginBottom: 0 }}
-                                                        value={e.repeticiones}
-                                                        onChange={ev => updateEjercicioRutina(index, 'repeticiones', ev.target.value)}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>Peso (kg)</label>
-                                                    <input
-                                                        type="number"
-                                                        className="input-modal"
-                                                        style={{ minHeight: '34px', padding: '4px 8px', marginBottom: 0 }}
-                                                        value={e.peso}
-                                                        onChange={ev => updateEjercicioRutina(index, 'peso', ev.target.value)}
-                                                    />
-                                                </div>
-                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p style={{ color: '#888', fontSize: '13px', fontStyle: 'italic', margin: '4px 0' }}>
-                                Aún no has agregado ejercicios a esta rutina. Usa el selector arriba.
-                            </p>
-                        )}
-                    </div>
-
-                    <button
-                        type="button"
-                        className="btn-neon-grad"
-                        onClick={handleGuardarRutina}
-                        disabled={guardando}
-                        style={{ width: '100%', marginTop: '16px', height: '48px', fontSize: '15px' }}
-                    >
-                        {guardando
-                            ? 'GUARDANDO...'
-                            : (rutinaEditandoId ? 'ACTUALIZAR RUTINA PERSONALIZADA' : 'GUARDAR RUTINA PERSONALIZADA')}
-                    </button>
-                </div>
-            )}
-
-            {/* ─── PESTAÑA 2: MIS RUTINAS / FAVORITAS (SOLO CREADAS POR EL ATLETA) ── */}
-            {tab === 'mis-rutinas' && (
-                <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-                    {/* BARRA DE FILTRO: TODAS vs SOLO FAVORITAS */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                                type="button"
-                                className={`tipo-usuario-btn ${!filtroFavoritas ? 'seleccionado' : ''}`}
-                                onClick={() => setFiltroFavoritas(false)}
-                                style={{ padding: '7px 14px', fontSize: '13px', minWidth: 'auto' }}
-                            >
-                                Todas mis rutinas
-                            </button>
-                            <button
-                                type="button"
-                                className={`tipo-usuario-btn ${filtroFavoritas ? 'seleccionado' : ''}`}
-                                onClick={() => setFiltroFavoritas(true)}
-                                style={{ padding: '7px 14px', fontSize: '13px', minWidth: 'auto' }}
-                            >
-                                Favoritas
-                            </button>
-                        </div>
-
-                        <button
-                            type="button"
-                            className="btn-guardar"
-                            onClick={() => {
-                                setRutinaEditandoId(null);
-                                setFormRutina(FORM_RUTINA_INICIAL);
-                                setRutinaEjercicios([]);
-                                setTab('crear');
-                            }}
-                            style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px' }}
-                        >
-                            + Nueva Rutina
-                        </button>
-                    </div>
-
-                    {loading ? (
-                        <div className="loading-state">
-                            <div className="loading-spinner" />
-                            <p>Cargando tus rutinas personalizadas...</p>
-                        </div>
-                    ) : rutinasFiltradas.length > 0 ? (
-                        <div style={{ display: 'grid', gap: '16px' }}>
-                            {rutinasFiltradas.map(r => (
-                                <div
-                                    key={r.id_rutina}
-                                    style={{
-                                        border: r.es_favorita === 1 ? '1px solid #c307cd' : '1px solid rgba(0, 210, 255, 0.4)',
-                                        background: '#181528',
-                                        padding: '18px',
-                                        borderRadius: '14px',
-                                        color: 'white',
-                                        boxShadow: '0 6px 20px rgba(0,0,0,0.35)'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                                        <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                <h3 style={{ margin: 0, fontSize: '18px', color: 'white' }}>{r.nombre}</h3>
-                                                {r.es_favorita === 1 && (
-                                                    <span style={{ fontSize: '14px' }} title="Rutina favorita">⭐</span>
-                                                )}
-                                                {r.dia_asignado && (
-                                                    <span className="badge-estado activo" style={{ fontSize: '11px', padding: '2px 8px' }}>
-                                                        Día: {r.dia_asignado}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {r.descripcion && (
-                                                <p style={{ margin: '8px 0 0 0', color: '#a0a0a0', fontSize: '13px' }}>
-                                                    {r.descripcion}
-                                                </p>
-                                            )}
+                                        <div className="rutina-inline-metric-box">
+                                            <span className="rutina-inline-metric-label">Reps</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="999"
+                                                className="rutina-inline-metric-input"
+                                                value={item.repeticiones}
+                                                onChange={e => handleUpdateMetricaInline(index, 'repeticiones', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="rutina-inline-metric-box">
+                                            <span className="rutina-inline-metric-label">Peso (kg)</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.5"
+                                                className="rutina-inline-metric-input"
+                                                value={item.peso}
+                                                onChange={e => handleUpdateMetricaInline(index, 'peso', e.target.value)}
+                                            />
                                         </div>
 
-                                        {/* ACCIONES CRUD: FAVORITA, EDITAR, ELIMINAR */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleToggleFavorita(r)}
-                                                style={{
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    fontSize: '18px',
-                                                    cursor: 'pointer',
-                                                    opacity: r.es_favorita === 1 ? 1 : 0.4
-                                                }}
-                                                title={r.es_favorita === 1 ? 'Quitar de favoritas' : 'Marcar favorita'}
-                                            >
-                                                ⭐
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => iniciarEdicion(r)}
-                                                style={{
-                                                    background: 'rgba(0, 210, 255, 0.15)',
-                                                    border: '1px solid #00d2ff',
-                                                    color: '#00d2ff',
-                                                    borderRadius: '6px',
-                                                    padding: '6px 12px',
-                                                    fontSize: '13px',
-                                                    fontWeight: '600',
-                                                    cursor: 'pointer'
-                                                }}
-                                                title="Editar rutina"
-                                            >
-                                                ✏️ Editar
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleEliminarRutina(r.id_rutina, r.nombre)}
-                                                style={{
-                                                    background: 'rgba(255, 178, 180, 0.15)',
-                                                    border: '1px solid #a10d10',
-                                                    color: '#ffb2b4',
-                                                    borderRadius: '6px',
-                                                    padding: '6px 12px',
-                                                    fontSize: '13px',
-                                                    fontWeight: '600',
-                                                    cursor: 'pointer'
-                                                }}
-                                                title="Eliminar rutina"
-                                            >
-                                                🗑️ Eliminar
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* LISTA DE EJERCICIOS DE LA RUTINA */}
-                                    <div style={{
-                                        background: 'rgba(15, 12, 27, 0.8)',
-                                        borderRadius: '10px',
-                                        padding: '12px',
-                                        marginTop: '14px',
-                                        border: '1px solid rgba(140, 88, 211, 0.25)'
-                                    }}>
-                                        <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--admin-celeste, #00d2ff)', marginBottom: '8px' }}>
-                                            Ejercicios incluidos ({r.ejercicios?.length || 0}):
-                                        </div>
-                                        {r.ejercicios && r.ejercicios.length > 0 ? (
-                                            <div style={{ display: 'grid', gap: '8px' }}>
-                                                {r.ejercicios.map((ej, idx) => (
-                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#d8ecf8', borderBottom: idx === r.ejercicios.length - 1 ? 'none' : '1px dashed rgba(140,88,211,0.2)', paddingBottom: '4px' }}>
-                                                        <span>• <b>{ej.nombre}</b> <span style={{ color: '#888', fontSize: '11px' }}>({ej.grupo_muscular || 'Gral'})</span></span>
-                                                        <span style={{ color: '#00d2ff', fontWeight: '600' }}>
-                                                            {ej.series} series × {ej.repeticiones} reps {Number(ej.peso) > 0 ? `| ${ej.peso} kg` : ''}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <span style={{ fontSize: '12px', color: '#7f7f7f' }}>Sin ejercicios configurados</span>
-                                        )}
+                                        {/* Botón para quitar del borrador */}
+                                        <button
+                                            type="button"
+                                            className="rutina-draft-delete-btn"
+                                            onClick={() => handleRemoverEjercicioBorrador(index)}
+                                            title="Quitar ejercicio"
+                                            aria-label="Quitar ejercicio"
+                                        >
+                                            <X size={16} />
+                                        </button>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="usuarios-vacio">
-                            <div className="usuarios-vacio-icon">📋</div>
-                            <p>
-                                {filtroFavoritas
-                                    ? 'No tienes ninguna rutina marcada como favorita aún.'
-                                    : 'Aún no has creado ninguna rutina personalizada.'}
-                            </p>
-                            <button
-                                type="button"
-                                className="btn-neon-grad"
-                                onClick={() => setTab('crear')}
-                                style={{ marginTop: '16px' }}
-                            >
-                                + Crear Mi Primera Rutina
-                            </button>
-                        </div>
+                        <p style={{ fontSize: '13px', color: 'var(--rut-text-muted)', fontStyle: 'italic', margin: '4px 0' }}>
+                            Aún no has agregado ejercicios a esta rutina. Selecciona de la lista de disponibles abajo.
+                        </p>
                     )}
+
+                    {/* ─────────────────────────────────────────────────────────────
+                       CATÁLOGO DE EJERCICIOS DISPONIBLES (AGREGADO DIRECTO SIN MODAL)
+                       ───────────────────────────────────────────────────────────── */}
+                    <div className="rutina-catalogo-container">
+                        <div className="rutina-draft-section-title" style={{ marginBottom: '10px' }}>
+                            <Search size={15} />
+                            Ejercicios Disponibles del Catálogo ({ejerciciosCatalogoFiltrados.length})
+                        </div>
+
+                        {/* Buscador de ejercicios */}
+                        <div className="rutina-catalogo-search-box">
+                            <Search size={16} color="var(--rut-text-muted)" />
+                            <input
+                                type="text"
+                                className="rutina-catalogo-search-input"
+                                placeholder="Buscar por nombre o músculo..."
+                                value={busquedaCatalogo}
+                                onChange={e => setBusquedaCatalogo(e.target.value)}
+                            />
+                            {busquedaCatalogo && (
+                                <button
+                                    type="button"
+                                    onClick={() => setBusquedaCatalogo('')}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--rut-text-muted)', cursor: 'pointer' }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Chips de filtro rápido dentro del catálogo */}
+                        <div className="rutinas-chips-bar" style={{ padding: '0 0 10px' }}>
+                            {CATEGORIAS_FILTRO.map(cat => (
+                                <button
+                                    key={cat}
+                                    type="button"
+                                    className={`rutinas-chip-btn ${categoriaCatalogo === cat ? 'active' : ''}`}
+                                    onClick={() => setCategoriaCatalogo(cat)}
+                                    style={{ minHeight: '32px', padding: '4px 12px', fontSize: '12px' }}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Grid de ejercicios disponibles */}
+                        <div className="rutina-catalogo-grid">
+                            {ejerciciosCatalogoFiltrados.map(ej => {
+                                const yaAgregado = draftEjercicios.some(e => e.id_ejercicio === ej.id_ejercicio);
+                                return (
+                                    <div key={ej.id_ejercicio} className="rutina-catalogo-item">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                                            <div className="rutina-ejercicio-thumb-box" style={{ width: '40px', height: '40px' }}>
+                                                {ej.gif ? (
+                                                    <img
+                                                        src={ej.gif}
+                                                        alt={ej.nombre}
+                                                        className="rutina-ejercicio-gif-img"
+                                                        onError={(e) => {
+                                                            e.currentTarget.style.display = 'none';
+                                                            if (e.currentTarget.nextSibling) {
+                                                                e.currentTarget.nextSibling.style.display = 'flex';
+                                                            }
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <div
+                                                    className="rutina-ejercicio-thumb-placeholder"
+                                                    style={{ display: ej.gif ? 'none' : 'flex' }}
+                                                >
+                                                    <Dumbbell size={16} />
+                                                </div>
+                                            </div>
+
+                                            <div className="rutina-ejercicio-details">
+                                                <span className="rutina-ejercicio-name" style={{ fontSize: '13px' }}>
+                                                    {ej.nombre}
+                                                </span>
+                                                <span className="rutina-ejercicio-musculo" style={{ fontSize: '11px' }}>
+                                                    {ej.grupo_muscular || 'General'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Botón de añadir directo SIN modal */}
+                                        <button
+                                            type="button"
+                                            className={`btn-catalogo-agregar ${yaAgregado ? 'agregado' : ''}`}
+                                            onClick={() => handleAgregarEjercicioAlBorrador(ej)}
+                                            disabled={yaAgregado}
+                                            title={yaAgregado ? 'Ya incluido en el borrador' : 'Agregar al borrador'}
+                                        >
+                                            {yaAgregado ? (
+                                                <>
+                                                    <Check size={13} />
+                                                    Agregado
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Plus size={13} />
+                                                    Agregar
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Botones de acción inferiores */}
+                    <div className="rutina-draft-bottom-bar">
+                        <button
+                            type="button"
+                            className="btn-draft-guardar"
+                            onClick={handleGuardarRutina}
+                            disabled={guardando}
+                        >
+                            <Check size={18} />
+                            {guardando
+                                ? 'Guardando rutina...'
+                                : (rutinaEditandoId ? 'Actualizar Rutina' : 'Guardar Rutina')}
+                        </button>
+                        <button
+                            type="button"
+                            className="btn-draft-cancelar"
+                            onClick={cancelarBorrador}
+                        >
+                            Cancelar
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

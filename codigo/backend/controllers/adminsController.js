@@ -62,3 +62,104 @@ exports.getAdmins = async (req, res) => {
         res.status(500).json({ success: false, message: 'Error del servidor' });
     }
 };
+
+// ─── GET /api/admins/perfil — Obtener perfil del administrador ──────────────
+exports.getPerfil = async (req, res) => {
+    const id = req.query.id || req.headers['x-user-id'];
+    const email = req.query.email;
+
+    try {
+        let rows = [];
+        if (id) {
+            [rows] = await db.query('SELECT id_admin, nombre, apellido, email, password FROM admins WHERE id_admin = ?', [id]);
+        } else if (email) {
+            [rows] = await db.query('SELECT id_admin, nombre, apellido, email, password FROM admins WHERE email = ?', [email]);
+        } else {
+            [rows] = await db.query('SELECT id_admin, nombre, apellido, email, password FROM admins LIMIT 1');
+        }
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Perfil de administrador no encontrado' });
+        }
+
+        const admin = rows[0];
+        res.json({
+            success: true,
+            data: {
+                id: admin.id_admin,
+                id_admin: admin.id_admin,
+                nombre: admin.nombre || '',
+                apellido: admin.apellido || '',
+                nombre_completo: `${admin.nombre || ''} ${admin.apellido || ''}`.trim() || 'Administrador',
+                email: admin.email || '',
+                password: admin.password || '',
+                rol: 'admin'
+            }
+        });
+    } catch (error) {
+        console.error('Error al obtener perfil admin:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+};
+
+// ─── PUT /api/admins/perfil — Actualizar perfil del administrador ────────────
+exports.updatePerfil = async (req, res) => {
+    const { id, id_admin, nombre, apellido, email, password } = req.body;
+    const adminId = id || id_admin || req.query.id || req.headers['x-user-id'];
+
+    if (!adminId) {
+        return res.status(400).json({ success: false, message: 'ID de administrador requerido' });
+    }
+
+    try {
+        const fields = [];
+        const values = [];
+
+        if (nombre !== undefined) {
+            fields.push('nombre = ?');
+            values.push(nombre.trim());
+        }
+        if (apellido !== undefined) {
+            fields.push('apellido = ?');
+            values.push(apellido.trim());
+        }
+        if (email !== undefined) {
+            fields.push('email = ?');
+            values.push(email.trim().toLowerCase());
+        }
+        if (password !== undefined && password.trim() !== '') {
+            fields.push('password = ?');
+            values.push(password.trim());
+        }
+
+        if (fields.length > 0) {
+            values.push(adminId);
+            await db.query(`UPDATE admins SET ${fields.join(', ')} WHERE id_admin = ?`, values);
+        }
+
+        const [rows] = await db.query('SELECT id_admin, nombre, apellido, email, password FROM admins WHERE id_admin = ?', [adminId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Administrador no encontrado' });
+        }
+
+        const admin = rows[0];
+        res.json({
+            success: true,
+            message: 'Perfil de administrador actualizado correctamente',
+            data: {
+                id: admin.id_admin,
+                id_admin: admin.id_admin,
+                nombre: admin.nombre || '',
+                apellido: admin.apellido || '',
+                nombre_completo: `${admin.nombre || ''} ${admin.apellido || ''}`.trim() || 'Administrador',
+                email: admin.email || '',
+                password: admin.password || '',
+                rol: 'admin'
+            }
+        });
+    } catch (error) {
+        console.error('Error al actualizar perfil admin:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+};
+
