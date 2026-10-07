@@ -452,6 +452,64 @@
   box-shadow: 0 4px 14px rgba(0, 210, 255, 0.35);
 }
 
+.perfil-btn-guardar:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ─── Campos Read-Only y Badges ─── */
+.perfil-form-input:disabled,
+.perfil-form-input[readonly] {
+  background: rgba(30, 27, 44, 0.65);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #8b889e;
+  cursor: not-allowed;
+}
+
+.perfil-readonly-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #00d2ff;
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ─── Input Contraseña con Toggle de Visibilidad ─── */
+.perfil-password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.perfil-password-input-wrap .perfil-form-input {
+  padding-right: 42px;
+}
+
+.perfil-password-toggle-btn {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: #8b889e;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.perfil-password-toggle-btn:hover {
+  color: #00d2ff;
+}
+
 /* ─── Feedback Toast ─── */
 .perfil-toast {
   position: fixed;

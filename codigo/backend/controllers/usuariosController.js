@@ -1,5 +1,15 @@
 const db = require('../config/db');
 const { enviarCodigoVerificacion } = require('../services/emailService');
+const bcrypt = require('bcryptjs');
+
+// ─── Helper: verificar contraseña (bcrypt hash o texto plano legado) ─────────
+const verifyPassword = async (candidate, stored) => {
+    if (!candidate || !stored) return false;
+    if (stored.startsWith('$2a$') || stored.startsWith('$2b$')) {
+        return await bcrypt.compare(candidate, stored);
+    }
+    return candidate === stored;
+};
 
 
 
@@ -226,57 +236,65 @@ exports.deleteUsuario = async (req, res) => {
 
 // ─── POST /api/usuarios/login — Login Admin o Atleta ─────────────────────
 exports.login = async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body; // <--- Cambiar 'const' por 'let'
 
     if (!email || !password) {
         return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
     }
 
+    email = email.trim().toLowerCase();
+
     try {
         // 1. Buscar en Admins
         const [admins] = await db.query(
-            'SELECT * FROM admins WHERE email = ? AND password = ?',
-            [email, password]
+            'SELECT * FROM admins WHERE email = ?',
+            [email]
         );
         if (admins.length > 0) {
             const admin = admins[0];
-            const { password: _pw, ...adminSafe } = admin;
-            return res.json({
-                success: true,
-                data: {
-                    ...adminSafe,
-                    id: admin.id_admin,
-                    rol: 'admin'
-                }
-            });
+            const matchAdmin = await verifyPassword(password, admin.password);
+            if (matchAdmin) {
+                const { password: _pw, ...adminSafe } = admin;
+                return res.json({
+                    success: true,
+                    data: {
+                        ...adminSafe,
+                        id: admin.id_admin,
+                        rol: 'admin'
+                    }
+                });
+            }
         }
 
         // 2. Buscar en Usuarios (sin filtrar activo ni verificado en el WHERE)
         const [usuarios] = await db.query(
-            'SELECT id_usuario, nombre, apellido, email, password, peso, altura, objetivo, nivel_entrenamiento, activo, id_admin, email_verificado FROM usuarios WHERE email = ? AND password = ?',
-            [email, password]
+            'SELECT id_usuario, nombre, apellido, email, password, peso, altura, objetivo, nivel_entrenamiento, activo, id_admin, email_verificado FROM usuarios WHERE email = ?',
+            [email]
         );
 
         if (usuarios.length > 0) {
             const usuario = usuarios[0];
+            const matchUser = await verifyPassword(password, usuario.password);
 
-            // Si la cuenta está deshabilitada administrativamente
-            if (usuario.activo === 0 && usuario.email_verificado === 1) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Tu cuenta se encuentra deshabilitada.'
+            if (matchUser) {
+                // Si la cuenta está deshabilitada administrativamente
+                if (usuario.activo === 0 && usuario.email_verificado === 1) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Tu cuenta se encuentra deshabilitada.'
+                    });
+                }
+
+                const normalized = normalizeUsuario(usuario);
+                const { password: _pw, ...usuarioSafe } = normalized;
+
+                // Retornamos 200 siempre que el usuario y la contraseña coincidan.
+                // El objeto incluye email_verificado (0 o 1) para que el frontend decida si va a /home o /verify-email.
+                return res.json({
+                    success: true,
+                    data: usuarioSafe
                 });
             }
-
-            const normalized = normalizeUsuario(usuario);
-            const { password: _pw, ...usuarioSafe } = normalized;
-
-            // Retornamos 200 siempre que el usuario y la contraseña coincidan.
-            // El objeto incluye email_verificado (0 o 1) para que el frontend decida si va a /home o /verify-email.
-            return res.json({
-                success: true,
-                data: usuarioSafe
-            });
         }
 
         // 3. Credenciales incorrectas
@@ -441,9 +459,9 @@ exports.getPerfil = async (req, res) => {
     }
 };
 
-// ─── PUT /api/usuarios/perfil — Actualizar perfil del usuario atleta ───────────
+// ─── PUT /api/usuarios/perfil — Actualizar datos personales del atleta ───────
 exports.updatePerfil = async (req, res) => {
-    const { id, id_usuario, nombre, apellido, email, password, peso, altura } = req.body;
+    const { id, id_usuario, nombre, apellido, peso, altura } = req.body;
     const userId = id || id_usuario || req.query.id || req.headers['x-user-id'];
 
     if (!userId) {
@@ -454,29 +472,22 @@ exports.updatePerfil = async (req, res) => {
         const fields = [];
         const values = [];
 
-        if (nombre !== undefined) {
+        // Solo campos personales permitidos (Email y Rol permanecen estrictamente deshabilitados / read-only)
+        if (nombre !== undefined && nombre.trim() !== '') {
             fields.push('nombre = ?');
             values.push(nombre.trim());
         }
-        if (apellido !== undefined) {
+        if (apellido !== undefined && apellido.trim() !== '') {
             fields.push('apellido = ?');
             values.push(apellido.trim());
         }
-        if (email !== undefined) {
-            fields.push('email = ?');
-            values.push(email.trim().toLowerCase());
-        }
-        if (password !== undefined && password.trim() !== '') {
-            fields.push('password = ?');
-            values.push(password.trim());
-        }
         if (peso !== undefined) {
             fields.push('peso = ?');
-            values.push(Number(peso) || 0);
+            values.push(Number(peso) || null);
         }
         if (altura !== undefined) {
             fields.push('altura = ?');
-            values.push(Number(altura) || 0);
+            values.push(Number(altura) || null);
         }
 
         if (fields.length > 0) {
@@ -501,16 +512,18 @@ exports.updatePerfil = async (req, res) => {
             apellido: usuario.apellido || '',
             nombre_completo: `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Atleta',
             email: usuario.email || '',
-            password: usuario.password || '',
             peso: usuario.peso != null ? Number(usuario.peso) : 82,
             altura: usuario.altura != null ? Number(usuario.altura) : 1.80,
+            objetivo: usuario.objetivo,
+            nivel_entrenamiento: usuario.nivel_entrenamiento,
             rol: 'atleta'
         };
 
-        res.json({ success: true, message: 'Perfil actualizado correctamente', data });
+        res.json({ success: true, message: 'Datos personales actualizados correctamente', data });
     } catch (error) {
-        console.error('Error al actualizar perfil de usuario:', error);
+        console.error('Error al actualizar datos personales del atleta:', error);
         res.status(500).json({ success: false, message: 'Error al actualizar el perfil', error: error.message });
     }
 };
+
 

@@ -82,6 +82,7 @@ function App() {
             </RequireAuth>
           } 
         />
+        <Route path="/attendance" element={<Navigate to="/asistencia" replace />} />
         <Route 
           path="/rutina" 
           element={

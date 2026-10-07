@@ -80,7 +80,7 @@ function AsistenciaView() {
 
     return (
         <div style={{ width: '100%', padding: '20px', maxWidth: '650px', margin: '0 auto' }}>
-            <h1 className="admin-titulo" style={{ textAlign: 'center', marginBottom: '20px' }}>PROGRESO DEL ATLETA</h1>
+            <h1 className="admin-titulo" style={{ textAlign: 'center', marginBottom: '20px' }}>REGISTRO DE ASISTENCIA</h1>
             {toast.msg && <div className={`toast ${toast.tipo}`}>{toast.msg}</div>}
 
             {/* REGISTRO SEMANAL (LUNES A DOMINGO) */}

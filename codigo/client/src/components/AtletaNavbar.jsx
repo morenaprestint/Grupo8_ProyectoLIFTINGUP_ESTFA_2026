@@ -50,6 +50,8 @@ function AtletaNavbar({ onLogout, moduloPendiente }) {
             type="button"
             className={`sidebar-item ${location.pathname === item.path ? 'activo' : ''}`}
             onClick={() => handleNavClick(item)}
+            title={item.name}
+            aria-label={item.name}
           >
             <img
               src={`/icons/atleta/${item.icon}`}

@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Edit2, LogOut, ShieldCheck, Activity, Award } from 'lucide-react';
+import {
+  User,
+  Edit2,
+  LogOut,
+  ShieldCheck,
+  Activity,
+  Award
+} from 'lucide-react';
 import { getCurrentUser, logout, saveUser } from '../features/authService';
 import { getPerfilUsuario, updatePerfilUsuario } from '../services/api';
 import '../styles/perfilViews.css';
@@ -15,16 +22,25 @@ export default function PerfilAtletaView() {
     apellido: currentUser?.apellido || 'Rocco',
     nombre_completo: `${currentUser?.nombre || 'Morena'} ${currentUser?.apellido || 'Rocco'}`.trim(),
     email: currentUser?.email || 'Morenarocco@gmail.com',
-    password: currentUser?.password || '••••••••',
     peso: currentUser?.peso ? Number(currentUser.peso) : 82,
     altura: currentUser?.altura ? Number(currentUser.altura) : 1.80,
     objetivo: currentUser?.objetivo || 'Ganar masa muscular',
-    nivel_entrenamiento: currentUser?.nivel_entrenamiento || 'Intermedio'
+    nivel_entrenamiento: currentUser?.nivel_entrenamiento || 'Intermedio',
+    rol: 'atleta'
   });
 
-  const [mostrarPassword, setMostrarPassword] = useState(false);
+  // Modal de edición de datos personales
   const [modalEdicion, setModalEdicion] = useState(false);
-  const [formEdit, setFormEdit] = useState({ ...perfil });
+
+  // Formulario de edición de datos personales (Nombre, Apellido, Peso, Altura)
+  const [formEdit, setFormEdit] = useState({
+    nombre: perfil.nombre,
+    apellido: perfil.apellido,
+    peso: perfil.peso,
+    altura: perfil.altura
+  });
+
+  // Estados de carga y alertas
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '', tipo: 'success' });
 
@@ -33,7 +49,7 @@ export default function PerfilAtletaView() {
     setTimeout(() => setToast({ show: false, msg: '', tipo: 'success' }), 3500);
   };
 
-  // Cargar datos desde el endpoint GET /api/usuarios/perfil
+  // Cargar datos reales desde el endpoint GET /api/usuarios/perfil
   useEffect(() => {
     const fetchPerfil = async () => {
       try {
@@ -47,14 +63,19 @@ export default function PerfilAtletaView() {
             apellido: d.apellido || perfil.apellido,
             nombre_completo: d.nombre_completo || `${d.nombre || ''} ${d.apellido || ''}`.trim() || perfil.nombre_completo,
             email: d.email || perfil.email,
-            password: d.password || perfil.password,
             peso: d.peso != null ? Number(d.peso) : perfil.peso,
             altura: d.altura != null ? Number(d.altura) : perfil.altura,
             objetivo: d.objetivo || perfil.objetivo,
-            nivel_entrenamiento: d.nivel_entrenamiento || perfil.nivel_entrenamiento
+            nivel_entrenamiento: d.nivel_entrenamiento || perfil.nivel_entrenamiento,
+            rol: 'atleta'
           };
           setPerfil(actualizado);
-          setFormEdit(actualizado);
+          setFormEdit({
+            nombre: actualizado.nombre,
+            apellido: actualizado.apellido,
+            peso: actualizado.peso,
+            altura: actualizado.altura
+          });
         }
       } catch (err) {
         console.warn('Usando datos de perfil locales:', err.message);
@@ -70,10 +91,16 @@ export default function PerfilAtletaView() {
   };
 
   const handleOpenEdit = () => {
-    setFormEdit({ ...perfil });
+    setFormEdit({
+      nombre: perfil.nombre,
+      apellido: perfil.apellido,
+      peso: perfil.peso,
+      altura: perfil.altura
+    });
     setModalEdicion(true);
   };
 
+  // ─── Guardar Datos Personales (Nombre, Apellido, Peso, Altura) ────────────
   const handleGuardarPerfil = async (e) => {
     e?.preventDefault();
     setLoading(true);
@@ -83,10 +110,8 @@ export default function PerfilAtletaView() {
         id: perfil.id,
         nombre: formEdit.nombre.trim(),
         apellido: formEdit.apellido.trim(),
-        email: formEdit.email.trim(),
-        password: formEdit.password,
-        peso: Number(formEdit.peso) || 0,
-        altura: Number(formEdit.altura) || 0
+        peso: Number(formEdit.peso) || null,
+        altura: Number(formEdit.altura) || null
       };
 
       const res = await updatePerfilUsuario(payload);
@@ -107,18 +132,10 @@ export default function PerfilAtletaView() {
         });
       }
 
-      mostrarNotificacion(res?.message || '¡Perfil actualizado con éxito!', 'success');
+      mostrarNotificacion(res?.message || '¡Datos personales actualizados con éxito!', 'success');
     } catch (err) {
-      console.error('Error al actualizar perfil:', err);
-      const nuevoPerfil = {
-        ...perfil,
-        ...formEdit,
-        nombre_completo: `${formEdit.nombre} ${formEdit.apellido}`.trim()
-      };
-      setPerfil(nuevoPerfil);
-      setModalEdicion(false);
-      if (currentUser) saveUser({ ...currentUser, ...nuevoPerfil });
-      mostrarNotificacion('Perfil actualizado localmente', 'success');
+      console.error('Error al actualizar datos personales:', err);
+      mostrarNotificacion(err?.message || 'Error al actualizar los datos personales', 'error');
     } finally {
       setLoading(false);
     }
@@ -171,7 +188,7 @@ export default function PerfilAtletaView() {
               <button
                 type="button"
                 className="perfil-edit-pencil-btn"
-                title="Editar Peso"
+                title="Editar Datos Personales y Peso"
                 onClick={handleOpenEdit}
               >
                 <Edit2 size={16} />
@@ -209,8 +226,8 @@ export default function PerfilAtletaView() {
         {/* ── COLUMNA 2: Tarjeta "Información de Sesiones y Cuenta" ── */}
         <section className="perfil-card">
           <div className="perfil-card-header">
-            <h2 className="perfil-card-title">Información de Sesiones y Cuenta</h2>
-            <span className="perfil-card-icon" role="img" aria-label="musculo">💪</span>
+            <h2 className="perfil-card-title">Información de Cuenta y Seguridad</h2>
+            <span className="perfil-card-icon" role="img" aria-label="seguridad">🔒</span>
           </div>
           <div className="perfil-neon-divider-purple" />
 
@@ -226,23 +243,23 @@ export default function PerfilAtletaView() {
               <div>
                 <span className="perfil-info-label-inline">Email:</span>
                 <span className="perfil-info-value-inline">{perfil.email}</span>
+                <span className="perfil-readonly-tag">🔒 No editable</span>
+              </div>
+            </div>
+
+            <div className="perfil-info-row">
+              <div>
+                <span className="perfil-info-label-inline">Rol de Cuenta:</span>
+                <span className="perfil-info-value-inline" style={{ textTransform: 'capitalize' }}>{perfil.rol}</span>
+                <span className="perfil-readonly-tag">🔒 No editable</span>
               </div>
             </div>
 
             <div className="perfil-info-row">
               <div>
                 <span className="perfil-info-label-inline">Contraseña:</span>
-                <span className="perfil-password-dots">
-                  {mostrarPassword ? (perfil.password || '••••••••') : '••••••••'}
-                </span>
+                <span className="perfil-password-dots">••••••••••••</span>
               </div>
-              <button
-                type="button"
-                className="perfil-btn-ver-clave"
-                onClick={() => setMostrarPassword(!mostrarPassword)}
-              >
-                {mostrarPassword ? 'Ocultar' : 'Ver'}
-              </button>
             </div>
           </div>
 
@@ -261,17 +278,17 @@ export default function PerfilAtletaView() {
               onClick={handleOpenEdit}
             >
               <Edit2 size={15} />
-              <span>Editar Perfil</span>
+              <span>Editar Datos Personales</span>
             </button>
           </div>
         </section>
       </div>
 
-      {/* ─── Modal de Edición de Perfil ─── */}
+      {/* ─── MODAL: Modificación de Datos Personales ─── */}
       {modalEdicion && (
         <div className="perfil-modal-overlay" onClick={() => setModalEdicion(false)}>
           <div className="perfil-modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 className="perfil-modal-title">Editar Perfil de Atleta</h3>
+            <h3 className="perfil-modal-title">Editar Datos Personales</h3>
             <form onSubmit={handleGuardarPerfil}>
               <div className="perfil-form-group">
                 <label className="perfil-form-label">Nombre</label>
@@ -280,6 +297,7 @@ export default function PerfilAtletaView() {
                   className="perfil-form-input"
                   value={formEdit.nombre}
                   onChange={(e) => setFormEdit({ ...formEdit, nombre: e.target.value })}
+                  placeholder="Tu nombre"
                   required
                 />
               </div>
@@ -291,40 +309,23 @@ export default function PerfilAtletaView() {
                   className="perfil-form-input"
                   value={formEdit.apellido}
                   onChange={(e) => setFormEdit({ ...formEdit, apellido: e.target.value })}
+                  placeholder="Tu apellido"
                   required
-                />
-              </div>
-
-              <div className="perfil-form-group">
-                <label className="perfil-form-label">Email</label>
-                <input
-                  type="email"
-                  className="perfil-form-input"
-                  value={formEdit.email}
-                  onChange={(e) => setFormEdit({ ...formEdit, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="perfil-form-group">
-                <label className="perfil-form-label">Contraseña</label>
-                <input
-                  type="text"
-                  className="perfil-form-input"
-                  value={formEdit.password}
-                  onChange={(e) => setFormEdit({ ...formEdit, password: e.target.value })}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="perfil-form-group">
-                  <label className="perfil-form-label">Peso (Kg)</label>
+                  <label className="perfil-form-label">Peso Corporal (Kg)</label>
                   <input
                     type="number"
                     step="0.1"
+                    min="30"
+                    max="300"
                     className="perfil-form-input"
-                    value={formEdit.peso}
+                    value={formEdit.peso || ''}
                     onChange={(e) => setFormEdit({ ...formEdit, peso: e.target.value })}
+                    placeholder="Ej: 82.5"
                   />
                 </div>
                 <div className="perfil-form-group">
@@ -332,11 +333,44 @@ export default function PerfilAtletaView() {
                   <input
                     type="number"
                     step="0.01"
+                    min="1.0"
+                    max="2.5"
                     className="perfil-form-input"
-                    value={formEdit.altura}
+                    value={formEdit.altura || ''}
                     onChange={(e) => setFormEdit({ ...formEdit, altura: e.target.value })}
+                    placeholder="Ej: 1.80"
                   />
                 </div>
+              </div>
+
+              {/* Campos estrictamente deshabilitados / Read-Only */}
+              <div className="perfil-form-group">
+                <label className="perfil-form-label">
+                  Email
+                  <span className="perfil-readonly-tag">🔒 Solo Lectura</span>
+                </label>
+                <input
+                  type="email"
+                  className="perfil-form-input"
+                  value={perfil.email}
+                  disabled
+                  readOnly
+                  title="El email de cuenta no puede modificarse por el atleta"
+                />
+              </div>
+
+              <div className="perfil-form-group">
+                <label className="perfil-form-label">
+                  Rol de Usuario
+                  <span className="perfil-readonly-tag">🔒 Solo Lectura</span>
+                </label>
+                <input
+                  type="text"
+                  className="perfil-form-input"
+                  value="Atleta"
+                  disabled
+                  readOnly
+                />
               </div>
 
               <div className="perfil-modal-actions">
@@ -352,7 +386,7 @@ export default function PerfilAtletaView() {
                   className="perfil-btn-guardar"
                   disabled={loading}
                 >
-                  {loading ? 'Guardando...' : 'Guardar Cambios'}
+                  {loading ? 'Guardando...' : 'Guardar Datos'}
                 </button>
               </div>
             </form>

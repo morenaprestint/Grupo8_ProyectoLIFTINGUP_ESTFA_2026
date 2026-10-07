@@ -78,7 +78,7 @@ const Attendance = () => {
         {/* Main Content Area */}
         <div className="admin-main attendance-main atleta-main main-content">
           <div className="attendance-content-centered">
-            <h1 className="page-title">PROGRESO DEL ATLETA</h1>
+            <h1 className="page-title">REGISTRO DE ASISTENCIA</h1>
 
             {/* Weekly Section */}
             <section className="attendance-card weekly-card">
