@@ -1,0 +1,506 @@
+/* ==========================================================================
+   NUTRICIÓN VIEW - "ARMA TU PLATO IDEAL"
+   Estilos inspirados en el diseño mobile original:
+   - Fondo violeta oscuro/azulado: #0f0c1b
+   - Tarjetas: #181528 / #1e1933
+   - Acentos: Púrpura neón #8a2be2, Verde acción #00c853 / #00e676
+   - Texto en alto contraste: #ffffff, #d8ecf8, #a0aec0
+   ========================================================================== */
+
+:root {
+  --nut-bg-page: #0f0c1b;
+  --nut-bg-card: #181528;
+  --nut-bg-card-inner: #211c38;
+  --nut-border-purple: rgba(138, 43, 226, 0.45);
+  --nut-neon-purple: #8a2be2;
+  --nut-neon-purple-soft: #6c5ce7;
+  --nut-green-action: #00c853;
+  --nut-green-hover: #00e676;
+  --nut-cyan: #00d2ff;
+  --nut-text-white: #ffffff;
+  --nut-text-muted: #94a3b8;
+  --nut-text-dim: #cbd5e1;
+}
+
+/* Contenedor principal de la vista */
+.nutricion-container {
+  width: 100%;
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 18px 14px 90px;
+  box-sizing: border-box;
+  color: var(--nut-text-white);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Título de la pantalla */
+.nutricion-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ffffff 40%, var(--nut-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─────────────────────────────────────────────────────────
+   1. TARJETA SUPERIOR: TUS ELECCIONES PARA EL PLATO
+   ───────────────────────────────────────────────────────── */
+.nutricion-card-elecciones {
+  background: var(--nut-bg-card);
+  border: 1px solid var(--nut-border-purple);
+  border-radius: 20px;
+  padding: 18px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nutricion-card-header-title {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+/* Línea divisoria en gradiente (morado a cian) */
+.nutricion-gradient-divider {
+  width: 100%;
+  height: 2.5px;
+  background: linear-gradient(90deg, #8a2be2 0%, #00d2ff 100%);
+  border-radius: 99px;
+  opacity: 0.85;
+}
+
+/* Barra horizontal de Chips / Tags */
+.nutricion-chips-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(138, 43, 226, 0.4) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nutricion-chips-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.nutricion-chips-bar::-webkit-scrollbar-thumb {
+  background: rgba(138, 43, 226, 0.4);
+  border-radius: 4px;
+}
+
+.nutricion-chip {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(26, 21, 46, 0.8);
+  border: 1px solid rgba(138, 43, 226, 0.4);
+  color: var(--nut-text-dim);
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nutricion-chip:hover {
+  background: rgba(138, 43, 226, 0.25);
+  border-color: var(--nut-neon-purple);
+  color: #ffffff;
+}
+
+.nutricion-chip.active {
+  background: linear-gradient(135deg, var(--nut-neon-purple), var(--nut-neon-purple-soft));
+  border-color: #a78bfa;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(138, 43, 226, 0.5);
+}
+
+/* Grilla de Alimentos (3 columnas) */
+.nutricion-alimentos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* Tarjeta individual de alimento */
+.nutricion-alimento-card {
+  background: var(--nut-bg-card-inner);
+  border: 1px solid rgba(138, 43, 226, 0.35);
+  border-radius: 12px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 86px;
+  position: relative;
+  user-select: none;
+}
+
+.nutricion-alimento-card:hover {
+  border-color: rgba(0, 210, 255, 0.6);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.nutricion-alimento-card.selected {
+  border-color: var(--nut-green-action);
+  background: rgba(36, 45, 40, 0.7);
+  box-shadow: 0 0 10px rgba(0, 200, 83, 0.25);
+}
+
+/* Fila superior de la tarjeta: Checkbox e Ícono */
+.nutricion-alimento-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/* Checkbox personalizado */
+.nutricion-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(156, 163, 175, 0.6);
+  background: rgba(15, 12, 27, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.nutricion-alimento-card.selected .nutricion-checkbox {
+  border-color: var(--nut-green-action);
+  background: rgba(0, 200, 83, 0.15);
+}
+
+.nutricion-check-icon {
+  color: var(--nut-green-hover);
+  stroke-width: 3.5px;
+}
+
+/* Contenedor del ícono/ilustración del alimento */
+.nutricion-alimento-icono-box {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Pie de la tarjeta: "250 kcal Carne" */
+.nutricion-alimento-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #cbd5e1;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nutricion-alimento-kcal {
+  font-size: 10.5px;
+  color: var(--nut-text-muted);
+}
+
+.nutricion-alimento-nombre {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mensaje orientativo */
+.nutricion-instruccion-text {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--nut-text-muted);
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+
+/* Botón Verde Destacado: "ARMA TU PLATO" */
+.btn-arma-tu-plato {
+  width: 100%;
+  background: var(--nut-green-action);
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 13px 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 200, 83, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+}
+
+.btn-arma-tu-plato:hover {
+  background: var(--nut-green-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 230, 118, 0.45);
+}
+
+.btn-arma-tu-plato:active {
+  transform: translateY(0);
+}
+
+/* ─────────────────────────────────────────────────────────
+   2. TARJETA INFERIOR: TU PLATO IDEAL ARMADO
+   ───────────────────────────────────────────────────────── */
+.nutricion-card-plato-armado {
+  background: var(--nut-bg-card);
+  border: 1px solid var(--nut-border-purple);
+  border-radius: 20px;
+  padding: 18px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nutricion-plato-armado-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 4px;
+}
+
+/* Lista con viñetas de ingredientes seleccionados */
+.nutricion-plato-ingredientes-list {
+  flex: 1;
+  min-width: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nutricion-plato-ingrediente-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  text-transform: lowercase;
+}
+
+.nutricion-plato-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a78bfa;
+  flex-shrink: 0;
+}
+
+.nutricion-plato-vacio-text {
+  font-size: 13px;
+  color: var(--nut-text-muted);
+  font-style: italic;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Contenedor de la ilustración del plato */
+.nutricion-plato-ilustracion-box {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
+}
+
+.nutricion-plato-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Banner de Total de Calorías Estimadas */
+.nutricion-calorias-total-banner {
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #e2e8f0;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(138, 43, 226, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.nutricion-calorias-valor {
+  color: var(--nut-cyan);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+/* Botón auxiliar para reiniciar o limpiar plato */
+.btn-reiniciar-plato {
+  background: transparent;
+  border: 1px dashed rgba(156, 163, 175, 0.35);
+  border-radius: 8px;
+  color: var(--nut-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  transition: all 0.2s ease;
+  align-self: center;
+}
+
+.btn-reiniciar-plato:hover {
+  color: #ffffff;
+  border-color: rgba(255, 71, 87, 0.6);
+  background: rgba(255, 71, 87, 0.1);
+}
+
+/* Toast de notificación */
+.nutricion-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e1738;
+  border: 1px solid var(--nut-green-action);
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  animation: slideToastUp 0.25s ease-out;
+}
+
+@keyframes slideToastUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 15px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   3. RESPONSIVE DESIGN (@media max-width: 600px)
+   ───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .nutricion-container {
+    padding: 12px 10px 80px;
+    gap: 14px;
+  }
+
+  .nutricion-title {
+    font-size: 19px;
+  }
+
+  .nutricion-card-elecciones,
+  .nutricion-card-plato-armado {
+    padding: 14px 12px;
+    border-radius: 16px;
+    gap: 12px;
+  }
+
+  .nutricion-card-header-title {
+    font-size: 13.5px;
+  }
+
+  .nutricion-alimentos-grid {
+    gap: 8px;
+  }
+
+  .nutricion-alimento-card {
+    padding: 8px 6px;
+    min-height: 80px;
+  }
+
+  .nutricion-alimento-icono-box {
+    width: 32px;
+    height: 32px;
+  }
+
+  .nutricion-alimento-meta {
+    font-size: 10px;
+  }
+
+  .nutricion-alimento-nombre {
+    font-size: 11px;
+  }
+
+  .nutricion-plato-ilustracion-box {
+    width: 115px;
+    height: 115px;
+  }
+
+  .nutricion-plato-ingrediente-item {
+    font-size: 13px;
+  }
+
+  .nutricion-calorias-total-banner {
+    font-size: 12px;
+  }
+
+  .nutricion-calorias-valor {
+    font-size: 14.5px;
+  }
+
+  .btn-arma-tu-plato {
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+}

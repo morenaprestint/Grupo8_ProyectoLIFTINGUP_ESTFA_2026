@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { Zap } from 'lucide-react';
 import { getCurrentUser, logout } from '../features/authService';
 import AtletaNavbar from '../components/AtletaNavbar';
 
@@ -22,7 +23,7 @@ function Home() {
         {/* The Sidebar (PC) / Bottom Nav (Mobile) is handled by AtletaNavbar now */}
         <AtletaNavbar onLogout={handleLogout} />
 
-        <div className="admin-main">
+        <div className="admin-main atleta-main main-content">
           
           {/* Topbar matching AdminDashboard */}
           <header className="admin-topbar">
@@ -70,11 +71,6 @@ function Home() {
           <main className="admin-content admin-home">
             
             <section className="home-welcome">
-              <img
-                src="/logo.png"
-                alt="Lifting Up"
-                className="home-logo"
-              />
               <h1>
                 “Hola, {user?.nombre || 'Atleta'}” 👋
               </h1>
@@ -82,6 +78,36 @@ function Home() {
                 “Pequeños avances grandes cambios.✨”
               </p>
             </section>
+
+            {/* BOTÓN DESTACADO: EMPEZAR A ENTRENAR (#6c5ce7 / #00d2ff) */}
+            <div style={{ margin: '0 auto 20px', maxWidth: '440px', width: '100%', padding: '0 10px', boxSizing: 'border-box' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/entrenamiento')}
+                style={{
+                  width: '100%',
+                  padding: '16px 22px',
+                  borderRadius: '16px',
+                  background: 'linear-gradient(135deg, #6c5ce7 0%, #00d2ff 100%)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: '15px',
+                  fontWeight: '800',
+                  letterSpacing: '0.6px',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 24px rgba(108, 92, 231, 0.45)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                }}
+              >
+                <Zap size={20} fill="#ffffff" />
+                Empezar a Entrenar
+              </button>
+            </div>
 
             <section className="home-cards">
               
@@ -118,7 +144,7 @@ function Home() {
                 </div>
               </div>
 
-              <div className="home-card" onClick={() => navigate('/registrar-entrenamiento')} style={{ cursor: 'pointer' }}>
+              <div className="home-card" onClick={() => navigate('/entrenamiento')} style={{ cursor: 'pointer' }}>
                 <img
                   src="/icons/admin/flecha-derecha.png"
                   alt=""

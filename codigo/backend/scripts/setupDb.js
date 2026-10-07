@@ -7,10 +7,11 @@ async function setupDatabase() {
     try {
         // Conectar a MySQL sin seleccionar base de datos
         const connection = await mysql.createConnection({
-            host: process.env.DB_HOST || 'localhost',
-            user: process.env.DB_USER || 'root',
-            password: process.env.DB_PASSWORD || '',
-            multipleStatements: true // Necesario para ejecutar múltiples sentencias SQL desde un archivo
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
+            multipleStatements: true
         });
 
         console.log('Conectado a MySQL.');
@@ -30,7 +31,7 @@ async function setupDatabase() {
         // Ejecutar el script SQL
         console.log('Ejecutando script SQL...');
         await connection.query(sqlScript);
-        
+
         console.log('Script SQL importado correctamente.');
         await connection.end();
         console.log('Proceso finalizado. Puedes iniciar tu servidor.');

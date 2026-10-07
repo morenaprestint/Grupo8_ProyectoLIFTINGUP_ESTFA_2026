@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LIFTING UP</string>
+    <string name="title_activity_main">LIFTING UP</string>
+    <string name="package_name">com.liftingup.app</string>
+    <string name="custom_url_scheme">com.liftingup.app</string>
+</resources>

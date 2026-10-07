@@ -1,0 +1,559 @@
+/* ==========================================================================
+   ENTRENAMIENTO VIEW - MODO ENTRENAR HOY
+   Paleta de colores:
+   - Fondo violeta oscuro/azulado: #0c0919, #141028
+   - Tarjetas: #181528, #1e1936
+   - Acentos: Púrpura neón #8a2be2, #6c5ce7, Cian eléctrico #00d2ff
+   - Botón acción: #00c853 (Verde éxito), #6c5ce7 (Neón)
+   ========================================================================== */
+
+:root {
+  --entr-bg-page: #0c0919;
+  --entr-bg-card: #181528;
+  --entr-bg-card-inner: rgba(22, 17, 43, 0.85);
+  --entr-neon-purple: #8a2be2;
+  --entr-neon-purple-soft: #6c5ce7;
+  --entr-cyan: #00d2ff;
+  --entr-border: rgba(138, 43, 226, 0.35);
+  --entr-green: #00c853;
+  --entr-amber: #f59e0b;
+  --entr-red: #ef4444;
+  --entr-text: #ffffff;
+  --entr-text-muted: #94a3b8;
+}
+
+.entrenamiento-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 18px 14px 100px;
+  box-sizing: border-box;
+  color: var(--entr-text);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.entrenamiento-header {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.entrenamiento-title {
+  font-size: 24px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 6px 0;
+  background: linear-gradient(135deg, #ffffff 40%, var(--entr-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.entrenamiento-subtitle {
+  font-size: 13px;
+  color: var(--entr-text-muted);
+  margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────
+   1. TARJETA SELECTORA DE RUTINA
+   ───────────────────────────────────────────────────────── */
+.entrenamiento-rutina-selector-card {
+  background: var(--entr-bg-card);
+  border: 1px solid var(--entr-border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.entrenamiento-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--entr-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.entrenamiento-select-rutina {
+  width: 100%;
+  background: rgba(14, 11, 28, 0.9);
+  border: 1px solid rgba(138, 43, 226, 0.4);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.entrenamiento-select-rutina:focus {
+  border-color: var(--entr-cyan);
+}
+
+/* ─────────────────────────────────────────────────────────
+   2. CRONÓMETRO EN TIEMPO REAL
+   ───────────────────────────────────────────────────────── */
+.entrenamiento-cronometro-card {
+  background: linear-gradient(135deg, rgba(26, 20, 52, 0.95), rgba(18, 14, 38, 0.95));
+  border: 1px solid var(--entr-neon-purple);
+  border-radius: 18px;
+  padding: 20px 16px;
+  box-shadow: 0 8px 25px rgba(138, 43, 226, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.entrenamiento-cronometro-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(138, 43, 226, 0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.cronometro-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cronometro-status-badge.corriendo {
+  background: rgba(0, 200, 83, 0.15);
+  border: 1px solid var(--entr-green);
+  color: #69f0ae;
+}
+
+.cronometro-status-badge.en-pausa {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid var(--entr-amber);
+  color: #fcd34d;
+}
+
+.cronometro-status-badge.detenido {
+  background: rgba(148, 163, 184, 0.15);
+  border: 1px solid var(--entr-text-muted);
+  color: var(--entr-text-muted);
+}
+
+.cronometro-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulseDot 1.5s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.cronometro-display {
+  font-family: 'Courier New', Courier, monospace, sans-serif;
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
+  margin: 4px 0;
+}
+
+.cronometro-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1;
+}
+
+.btn-crono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 44px;
+  border: none;
+}
+
+.btn-crono-play {
+  background: linear-gradient(135deg, var(--entr-green), #00e676);
+  color: #0c0919;
+  box-shadow: 0 4px 14px rgba(0, 200, 83, 0.35);
+}
+
+.btn-crono-play:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 230, 118, 0.5);
+}
+
+.btn-crono-pause {
+  background: linear-gradient(135deg, var(--entr-amber), #fbbf24);
+  color: #0c0919;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+}
+
+.btn-crono-pause:hover {
+  transform: translateY(-1px);
+}
+
+.btn-crono-reset {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--entr-text-muted);
+}
+
+.btn-crono-reset:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────────
+   3. LISTA DE EJERCICIOS CON INPUTS INLINE
+   ───────────────────────────────────────────────────────── */
+.entrenamiento-ejercicios-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.entrenamiento-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.entrenamiento-ejercicio-card {
+  background: var(--entr-bg-card);
+  border: 1px solid var(--entr-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  transition: all 0.2s ease;
+}
+
+.entrenamiento-ejercicio-card.completado {
+  border-color: rgba(0, 200, 83, 0.5);
+  background: rgba(20, 28, 24, 0.85);
+}
+
+.entrenamiento-ejercicio-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.entrenamiento-ejercicio-thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(138, 43, 226, 0.3);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.entrenamiento-ejercicio-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.entrenamiento-ejercicio-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.entrenamiento-ejercicio-nombre {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+.entrenamiento-ejercicio-grupo {
+  font-size: 11.5px;
+  color: var(--entr-text-muted);
+  margin-top: 1px;
+}
+
+/* Inputs inline: Series, Reps, Kilos (kg) */
+.entrenamiento-inputs-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.entrenamiento-input-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.entrenamiento-input-box label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--entr-text-muted);
+  text-transform: uppercase;
+}
+
+.entrenamiento-input-num {
+  width: 54px;
+  background: rgba(14, 11, 28, 0.95);
+  border: 1px solid rgba(138, 43, 226, 0.45);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 2px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.entrenamiento-input-num:focus {
+  border-color: var(--entr-cyan);
+}
+
+.btn-check-completado {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--entr-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-check-completado:hover {
+  background: rgba(0, 200, 83, 0.15);
+  border-color: var(--entr-green);
+  color: var(--entr-green);
+}
+
+.btn-check-completado.completado {
+  background: var(--entr-green);
+  border-color: var(--entr-green);
+  color: #0c0919;
+}
+
+/* ─────────────────────────────────────────────────────────
+   4. PANEL DE MÉTRICAS EN VIVO Y FINALIZAR
+   ───────────────────────────────────────────────────────── */
+.entrenamiento-live-metrics-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  background: var(--entr-bg-card-inner);
+  border: 1px solid var(--entr-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.live-metric-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.live-metric-label {
+  font-size: 11px;
+  color: var(--entr-text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.live-metric-val {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--entr-cyan);
+}
+
+/* Botón Finalizar Entrenamiento */
+.btn-finalizar-entrenamiento {
+  width: 100%;
+  background: linear-gradient(135deg, var(--entr-neon-purple), var(--entr-neon-purple-soft));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(138, 43, 226, 0.45);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+}
+
+.btn-finalizar-entrenamiento:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 26px rgba(138, 43, 226, 0.6);
+}
+
+.btn-finalizar-entrenamiento:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-finalizar-entrenamiento:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modal de Resumen al Finalizar */
+.entrenamiento-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 99999;
+}
+
+.entrenamiento-modal-content {
+  background: #181528;
+  border: 1px solid var(--entr-neon-purple);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}
+
+.modal-trophy-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(0, 210, 255, 0.3));
+  border: 1px solid var(--entr-cyan);
+  color: var(--entr-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.modal-resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.modal-resumen-item {
+  background: rgba(14, 11, 28, 0.85);
+  border: 1px solid rgba(138, 43, 226, 0.3);
+  border-radius: 10px;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.modal-actions-flex {
+  display: flex;
+  gap: 10px;
+}
+
+/* ─────────────────────────────────────────────────────────
+   5. RESPONSIVE DESIGN (@media max-width: 600px)
+   ───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .entrenamiento-container {
+    padding: 12px 10px 80px;
+    gap: 14px;
+  }
+
+  .cronometro-display {
+    font-size: 34px;
+  }
+
+  .entrenamiento-ejercicio-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .entrenamiento-inputs-inline {
+    justify-content: space-between;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(138, 43, 226, 0.2);
+  }
+
+  .entrenamiento-input-num {
+    width: 64px;
+  }
+
+  .modal-actions-flex {
+    flex-direction: column;
+  }
+}

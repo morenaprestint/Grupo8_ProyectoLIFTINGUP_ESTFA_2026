@@ -1,0 +1,466 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   EQUIPAMIENTO VIEW - LIFTING UP (Dashboard Embedded & Responsive)
+   Estilo Neón Nocturno: #181623 / #1E1B2E con Acentos Cyan (#00D2FF) & Púrpura (#8A2387)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.equip-dashboard-container {
+  width: 100%;
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 10px 16px 40px;
+  box-sizing: border-box;
+  color: #ffffff;
+  font-family: inherit;
+  animation: fadeInEquip 0.25s ease-out;
+}
+
+@keyframes fadeInEquip {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Encabezado de la Sección ─── */
+.equip-header-section {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.equip-main-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 6px;
+  letter-spacing: 0.3px;
+}
+
+.equip-subtitulo {
+  font-size: 15px;
+  color: #b0b0c0;
+  margin: 0;
+}
+
+/* ─── Selector de Pestañas (Tabs) ─── */
+.equip-tabs-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.equip-tab-btn {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 22px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.equip-tab-btn.active {
+  background: linear-gradient(135deg, #a855f7 0%, #8a2387 100%);
+  color: #ffffff;
+  border-color: #a855f7;
+  box-shadow: 0 4px 18px rgba(168, 85, 247, 0.45);
+}
+
+.equip-tab-btn.inactive {
+  background: #2a2738;
+  color: #b0b0c0;
+}
+
+.equip-tab-btn.inactive:hover {
+  background: #37344a;
+  color: #ffffff;
+}
+
+.equip-tab-badge {
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+/* ─── Tarjeta Extendida de Formulario ─── */
+.equip-card-neon {
+  background: #252233;
+  border: 2px solid #00d2ff;
+  border-radius: 20px;
+  padding: 28px 32px;
+  box-shadow: 0 0 25px rgba(0, 210, 255, 0.2), 0 10px 32px rgba(0, 0, 0, 0.45);
+  margin-bottom: 24px;
+}
+
+/* ─── Grid de 2 Columnas para Escritorio ─── */
+.equip-form-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px 28px;
+}
+
+@media (min-width: 768px) {
+  .equip-form-grid-2col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.equip-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.equip-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.equip-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.equip-input {
+  width: 100%;
+  background: rgba(65, 63, 80, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.equip-input::placeholder {
+  color: rgba(190, 190, 210, 0.45);
+  font-size: 13.5px;
+}
+
+.equip-input:focus {
+  border-color: #00d2ff;
+  background: rgba(75, 73, 95, 0.9);
+  box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.2);
+}
+
+/* ─── Selector de Imagen (Cámara) ─── */
+.equip-image-picker-box {
+  width: 100%;
+  height: 90px;
+  background: rgba(65, 63, 80, 0.65);
+  border: 1.5px dashed rgba(0, 210, 255, 0.4);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  gap: 12px;
+}
+
+.equip-image-picker-box:hover {
+  border-color: #00d2ff;
+  background: rgba(80, 78, 105, 0.85);
+  box-shadow: 0 0 14px rgba(0, 210, 255, 0.25);
+}
+
+.equip-camera-icon {
+  width: 32px;
+  height: 32px;
+  color: #b0b0c0;
+  transition: color 0.2s;
+}
+
+.equip-image-picker-box:hover .equip-camera-icon {
+  color: #00d2ff;
+}
+
+.equip-image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.equip-image-hint {
+  font-size: 12px;
+  color: #b0b0c0;
+}
+
+/* ─── Toggle de Estatus Inicial ─── */
+.equip-status-toggle-row {
+  display: flex;
+  gap: 12px;
+}
+
+.equip-status-btn {
+  background: rgba(65, 63, 80, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #b0b0c0;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  text-align: center;
+}
+
+.equip-status-btn.selected {
+  background: rgba(0, 210, 255, 0.2);
+  border-color: #00d2ff;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.35);
+}
+
+.equip-status-btn.mantenimiento.selected {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: #a855f7;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+}
+
+/* ─── Botones de Acción Principales ─── */
+.equip-actions-row-expanded {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.equip-btn-guardar {
+  background: linear-gradient(135deg, #a855f7 0%, #00d2ff 100%);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  padding: 13px 20px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 18px rgba(168, 85, 247, 0.4);
+}
+
+.equip-btn-guardar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0, 210, 255, 0.5);
+}
+
+.equip-btn-cancelar {
+  background: #373546;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: #ffffff;
+  padding: 13px 20px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.equip-btn-cancelar:hover {
+  background: #474558;
+  transform: translateY(-2px);
+}
+
+/* ─── Vista Mantenimiento (Grid de Tarjetas) ─── */
+.equip-mantenimiento-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.equip-filter-chips {
+  display: flex;
+  gap: 8px;
+}
+
+.equip-filter-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #b0b0c0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.equip-filter-chip.active {
+  background: #00d2ff;
+  border-color: #00d2ff;
+  color: #181623;
+  font-weight: 700;
+}
+
+.equip-grid-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 700px) {
+  .equip-grid-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1050px) {
+  .equip-grid-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.equip-item-card {
+  background: #252233;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.equip-item-card:hover {
+  border-color: #00d2ff;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.equip-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.equip-card-thumb {
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  object-fit: cover;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.equip-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.equip-item-nombre {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.equip-item-details {
+  font-size: 12.5px;
+  color: #b0b0c0;
+}
+
+.equip-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.equip-item-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.equip-item-badge.disponible {
+  background: rgba(0, 184, 148, 0.2);
+  color: #00b894;
+  border: 1px solid #00b894;
+}
+
+.equip-item-badge.disponible:hover {
+  background: rgba(0, 184, 148, 0.35);
+}
+
+.equip-item-badge.mantenimiento {
+  background: rgba(225, 112, 85, 0.2);
+  color: #e17055;
+  border: 1px solid #e17055;
+}
+
+.equip-item-badge.mantenimiento:hover {
+  background: rgba(225, 112, 85, 0.35);
+}
+
+.equip-empty-msg {
+  text-align: center;
+  color: #b0b0c0;
+  font-size: 15px;
+  padding: 40px 16px;
+  background: #252233;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Adaptación Móvil ─── */
+@media (max-width: 767px) {
+  .equip-dashboard-container {
+    padding: 10px 4px 90px;
+  }
+
+  .equip-card-neon {
+    padding: 20px 16px;
+  }
+
+  .equip-actions-row-expanded {
+    grid-template-columns: 1fr;
+  }
+}

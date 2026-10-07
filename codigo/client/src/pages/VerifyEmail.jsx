@@ -4,7 +4,7 @@ import { getCurrentUser, saveUser, logout } from '../features/authService';
 import '../styles/verifyEmail.css';
 
 const cleanUrl = (rawUrl) => {
-  if (!rawUrl) return 'http://localhost:3001/api';
+  if (!rawUrl) return 'https://lifting-up-backend.onrender.com/api';
   // Elimina corchetes, comillas y espacios accidentales
   let cleaned = rawUrl.replace(/[\[\]"']/g, '').trim();
   // Si contiene paréntesis de un link markdown [texto](url), extrae solo la URL

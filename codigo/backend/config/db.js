@@ -1,13 +1,13 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Creamos un pool de conexiones para mejorar el rendimiento y escalabilidad
+// Creamos un pool de conexiones para conectar a MySQL en Aiven
 const pool = mysql.createPool({
-    port: process.env.DB_PORT || '3306',
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'maxi2008',
-    database: process.env.DB_NAME || 'lifting_up',
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || 'defaultdb',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,

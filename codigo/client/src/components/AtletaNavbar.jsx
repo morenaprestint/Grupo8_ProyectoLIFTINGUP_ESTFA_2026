@@ -8,8 +8,8 @@ function AtletaNavbar({ onLogout, moduloPendiente }) {
 
   const navItems = [
     { name: 'Home', path: '/home', icon: 'home.png', developed: true },
-    { name: 'Progreso', path: '/progreso', icon: 'progreso.png', developed: false },
-    { name: 'Nutrición', path: '/nutricion', icon: 'nutricion.png', developed: false },
+    { name: 'Progreso', path: '/progreso', icon: 'progreso.png', developed: true },
+    { name: 'Nutrición', path: '/nutricion', icon: 'nutricion.png', developed: true },
     { name: 'Rutina', path: '/rutina', icon: 'rutina.png', developed: true },
     { name: 'Calendario', path: '/calendario', icon: 'calendario.png', developed: true },
     { name: 'Asistencia', path: '/asistencia', icon: 'asistencia.png', developed: true }
@@ -34,7 +34,7 @@ function AtletaNavbar({ onLogout, moduloPendiente }) {
 
   return (
     <nav className="admin-sidebar atleta-sidebar">
-      
+
       <div className="sidebar-logo-container">
         <img
           src="/logo.png"
@@ -50,6 +50,8 @@ function AtletaNavbar({ onLogout, moduloPendiente }) {
             type="button"
             className={`sidebar-item ${location.pathname === item.path ? 'activo' : ''}`}
             onClick={() => handleNavClick(item)}
+            title={item.name}
+            aria-label={item.name}
           >
             <img
               src={`/icons/atleta/${item.icon}`}

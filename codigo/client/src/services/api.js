@@ -84,8 +84,19 @@ export const deleteUsuario = async (id) => {
 };
 
 // ─── RUTINAS ─────────────────────────────────────────────────────────────
-export const getRutinas = async (id_usuario = '') => {
-    const query = id_usuario ? `?id_usuario=${id_usuario}` : '';
+export const getRutinas = async (id_usuario = '', prearmadas = false, solo_usuario = false) => {
+    let query = '';
+    const params = [];
+    if (prearmadas) {
+        params.push('prearmadas=true');
+    } else if (solo_usuario && id_usuario) {
+        params.push(`id_usuario=${id_usuario}&solo_usuario=true`);
+    } else if (id_usuario) {
+        params.push(`id_usuario=${id_usuario}`);
+    }
+    if (params.length > 0) {
+        query = `?${params.join('&')}`;
+    }
     const response = await fetch(`${API_URL}/rutinas${query}`);
     return handleResponse(response);
 };
@@ -108,9 +119,24 @@ export const updateRutina = async (id, data) => {
     return handleResponse(response);
 };
 
+export const deleteRutina = async (id) => {
+    const response = await fetch(`${API_URL}/rutinas/${id}`, {
+        method: 'DELETE',
+    });
+    return handleResponse(response);
+};
+
 // ─── ASISTENCIAS ─────────────────────────────────────────────────────────
-export const getAsistencias = async (id_usuario) => {
-    const query = id_usuario ? `?id_usuario=${id_usuario}` : '';
+export const getAsistencias = async (filtro = '') => {
+    let query = '';
+    if (typeof filtro === 'object' && filtro !== null) {
+        const params = [];
+        if (filtro.id_usuario) params.push(`id_usuario=${filtro.id_usuario}`);
+        if (filtro.fecha) params.push(`fecha=${filtro.fecha}`);
+        if (params.length > 0) query = `?${params.join('&')}`;
+    } else if (filtro) {
+        query = `?id_usuario=${filtro}`;
+    }
     const response = await fetch(`${API_URL}/asistencia${query}`);
     return handleResponse(response);
 };
@@ -135,6 +161,105 @@ export const createEjercicio = async (data) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+};
+
+export const updateEjercicio = async (id, data) => {
+    const response = await fetch(`${API_URL}/ejercicios/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+};
+
+export const deleteEjercicio = async (id) => {
+    const response = await fetch(`${API_URL}/ejercicios/${id}`, {
+        method: 'DELETE',
+    });
+    return handleResponse(response);
+};
+
+// ─── HISTORIAL DE ENTRENAMIENTOS ─────────────────────────────────────────
+export const createHistorial = async (data) => {
+    const response = await fetch(`${API_URL}/historial`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+export const getHistorialByUsuario = async (id_usuario) => {
+    const response = await fetch(`${API_URL}/historial/${id_usuario}`);
+    return handleResponse(response);
+};
+
+// ─── PERFIL USUARIO ATLETA ────────────────────────────────────────────────
+export const getPerfilUsuario = async (userId, email) => {
+    let query = '';
+    if (userId) query = `?id=${userId}`;
+    else if (email) query = `?email=${encodeURIComponent(email)}`;
+    const response = await fetch(`${API_URL}/usuarios/perfil${query}`);
+    return handleResponse(response);
+};
+
+export const updatePerfilUsuario = async (data) => {
+    const response = await fetch(`${API_URL}/usuarios/perfil`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+// ─── PERFIL USUARIO ADMINISTRADOR ─────────────────────────────────────────
+export const getPerfilAdmin = async (adminId, email) => {
+    let query = '';
+    if (adminId) query = `?id=${adminId}`;
+    else if (email) query = `?email=${encodeURIComponent(email)}`;
+    const response = await fetch(`${API_URL}/admins/perfil${query}`);
+    return handleResponse(response);
+};
+
+export const updatePerfilAdmin = async (data) => {
+    const response = await fetch(`${API_URL}/admins/perfil`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+// ─── EQUIPAMIENTO ────────────────────────────────────────────────────────
+export const getEquipamiento = async (estatus = '') => {
+    const query = estatus ? `?estatus=${encodeURIComponent(estatus)}` : '';
+    const response = await fetch(`${API_URL}/equipamiento${query}`);
+    return handleResponse(response);
+};
+
+export const createEquipamiento = async (data) => {
+    const response = await fetch(`${API_URL}/equipamiento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+export const updateEquipamiento = async (id, data) => {
+    const response = await fetch(`${API_URL}/equipamiento/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+};
+
+export const deleteEquipamiento = async (id) => {
+    const response = await fetch(`${API_URL}/equipamiento/${id}`, {
+        method: 'DELETE'
     });
     return handleResponse(response);
 };

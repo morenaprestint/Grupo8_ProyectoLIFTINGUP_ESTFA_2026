@@ -12,13 +12,24 @@ import {
   createAdmin,
   updateUsuario,
   deleteUsuario,
-  getAdmins
+  getAdmins,
+  getEjercicios,
+  createEjercicio,
+  updateEjercicio,
+  deleteEjercicio,
+  getRutinas,
+  createRutina,
+  updateRutina,
+  deleteRutina,
+  getAsistencias
 } from '../services/api.js'
 
 import UsuariosTable from '../components/UsuariosTable.jsx'
 import UsuarioForm from '../components/UsuarioForm.jsx'
 import AdminForm from '../components/AdminForm.jsx'
 import UsuarioModal from '../components/UsuarioModal.jsx'
+import EquipamientoView from '../views/EquipamientoView.jsx'
+import PerfilAdminView from '../views/PerfilAdminView.jsx'
 
 import '../styles/adminDashboard.css'
 
@@ -40,6 +51,32 @@ const FORM_ADMIN_INICIAL = {
   password: ''
 }
 
+const FORM_EJERCICIO_INICIAL = {
+  nombre: '',
+  grupo_muscular: 'Pecho',
+  descripcion: '',
+  gif: ''
+}
+
+const FORM_RUTINA_INICIAL = {
+  nombre: '',
+  descripcion: '',
+  dia_asignado: ''
+}
+
+const GRUPOS_MUSCULARES = [
+  'Pecho',
+  'Espalda',
+  'Pierna',
+  'Hombro',
+  'Bíceps',
+  'Tríceps',
+  'Abdomen',
+  'Glúteos',
+  'Cardio',
+  'Cuerpo Completo'
+]
+
 function Toast({ msg, tipo }) {
   if (!msg) return null
 
@@ -50,13 +87,21 @@ function Toast({ msg, tipo }) {
   )
 }
 
-function AdminDashboard() {
+function AdminDashboard({ vistaInicial = 'home' }) {
   const navigate = useNavigate()
   const admin = getCurrentUser()
 
-  const [vista, setVista] = useState('home')
+  const [vista, setVista] = useState(vistaInicial)
+
+  useEffect(() => {
+    if (vistaInicial) {
+      setVista(vistaInicial)
+    }
+  }, [vistaInicial])
+
   const [tipoAlta, setTipoAlta] = useState('usuario')
 
+  // Usuarios & Admins
   const [usuarios, setUsuarios] = useState([])
   const [adminsList, setAdminsList] = useState([])
   const [loading, setLoading] = useState(true)
@@ -72,6 +117,33 @@ function AdminDashboard() {
 
   const [formUsuario, setFormUsuario] = useState(FORM_USUARIO_INICIAL)
   const [formAdmin, setFormAdmin] = useState(FORM_ADMIN_INICIAL)
+
+  // Asistencia
+  const [asistenciasList, setAsistenciasList] = useState([])
+  const [loadingAsistencia, setLoadingAsistencia] = useState(false)
+  const [filtroFechaAsistencia, setFiltroFechaAsistencia] = useState('')
+  const [busquedaAsistencia, setBusquedaAsistencia] = useState('')
+
+  // Ejercicios
+  const [ejerciciosList, setEjerciciosList] = useState([])
+  const [loadingEjercicios, setLoadingEjercicios] = useState(false)
+  const [busquedaEjercicio, setBusquedaEjercicio] = useState('')
+  const [filtroGrupoEjercicio, setFiltroGrupoEjercicio] = useState('')
+  const [modalCrearEjercicio, setModalCrearEjercicio] = useState(false)
+  const [ejercicioEditando, setEjercicioEditando] = useState(null)
+  const [formEjercicio, setFormEjercicio] = useState(FORM_EJERCICIO_INICIAL)
+  const [confirmEliminarEjercicio, setConfirmEliminarEjercicio] = useState(null)
+
+  // Rutinas Prearmadas
+  const [rutinasList, setRutinasList] = useState([])
+  const [loadingRutinas, setLoadingRutinas] = useState(false)
+  const [busquedaRutina, setBusquedaRutina] = useState('')
+  const [modalCrearRutina, setModalCrearRutina] = useState(false)
+  const [rutinaEditando, setRutinaEditando] = useState(null)
+  const [formRutina, setFormRutina] = useState(FORM_RUTINA_INICIAL)
+  const [rutinaEjercicios, setRutinaEjercicios] = useState([])
+  const [ejercicioSeleccionadoId, setEjercicioSeleccionadoId] = useState('')
+  const [confirmEliminarRutina, setConfirmEliminarRutina] = useState(null)
 
   const [toast, setToast] = useState({
     msg: '',
@@ -89,9 +161,9 @@ function AdminDashboard() {
     }, 3500)
   }
 
+  // Cargar Usuarios
   const cargarUsuarios = useCallback(async () => {
     setLoading(true)
-
     try {
       const [responseUsuarios, responseAdmins] = await Promise.all([
         getUsuarios(),
@@ -121,13 +193,78 @@ function AdminDashboard() {
     }
   }, [])
 
+  // Cargar Asistencias
+  const cargarAsistencias = useCallback(async (fecha = '') => {
+    setLoadingAsistencia(true)
+    try {
+      const res = await getAsistencias(fecha ? { fecha } : '')
+      if (res?.success && Array.isArray(res.data)) {
+        setAsistenciasList(res.data)
+      } else {
+        setAsistenciasList([])
+      }
+    } catch (error) {
+      console.error('Error al cargar asistencias:', error)
+      mostrarToast('Error al cargar asistencias', 'error')
+    } finally {
+      setLoadingAsistencia(false)
+    }
+  }, [])
+
+  // Cargar Ejercicios
+  const cargarEjercicios = useCallback(async () => {
+    setLoadingEjercicios(true)
+    try {
+      const res = await getEjercicios()
+      if (res?.success && Array.isArray(res.data)) {
+        setEjerciciosList(res.data)
+      } else {
+        setEjerciciosList([])
+      }
+    } catch (error) {
+      console.error('Error al cargar ejercicios:', error)
+      mostrarToast('Error al cargar catálogo de ejercicios', 'error')
+    } finally {
+      setLoadingEjercicios(false)
+    }
+  }, [])
+
+  // Cargar Rutinas Prearmadas
+  const cargarRutinas = useCallback(async () => {
+    setLoadingRutinas(true)
+    try {
+      const res = await getRutinas('', true)
+      if (res?.success && Array.isArray(res.data)) {
+        setRutinasList(res.data)
+      } else {
+        setRutinasList([])
+      }
+    } catch (error) {
+      console.error('Error al cargar rutinas:', error)
+      mostrarToast('Error al cargar rutinas prearmadas', 'error')
+    } finally {
+      setLoadingRutinas(false)
+    }
+  }, [])
+
   useEffect(() => {
     cargarUsuarios()
   }, [cargarUsuarios])
 
+  // Cargar vistas al cambiar de pestaña
+  useEffect(() => {
+    if (vista === 'asistencia') {
+      cargarAsistencias(filtroFechaAsistencia)
+    } else if (vista === 'ejercicios') {
+      cargarEjercicios()
+    } else if (vista === 'rutinas') {
+      cargarRutinas()
+      cargarEjercicios() // Para tener el catálogo listo en el selector
+    }
+  }, [vista, filtroFechaAsistencia, cargarAsistencias, cargarEjercicios, cargarRutinas])
+
   const handleChangeUsuario = (e) => {
     const { name, value } = e.target
-
     setFormUsuario(prev => ({
       ...prev,
       [name]: value
@@ -136,7 +273,6 @@ function AdminDashboard() {
 
   const handleChangeAdmin = (e) => {
     const { name, value } = e.target
-
     setFormAdmin(prev => ({
       ...prev,
       [name]: value
@@ -145,16 +281,18 @@ function AdminDashboard() {
 
   const generarPassword = (nombre, apellido) => {
     if (!nombre || !apellido) return ''
-
+    const nomClean = nombre.trim()
+    const apeClean = apellido.trim().toLowerCase()
+    const nomCapitalized = nomClean.charAt(0).toUpperCase() + nomClean.slice(1).toLowerCase()
     return (
-      nombre.toLowerCase() +
-      apellido.toLowerCase().charAt(0) +
-      '123'
-    ).replace(/\s/g, '')
+      nomCapitalized +
+      '.' +
+      apeClean +
+      Math.floor(100 + Math.random() * 900)
+    )
   }
 
   const abrirCrear = () => {
-    setTipoAlta('usuario')
     setFormUsuario(FORM_USUARIO_INICIAL)
     setFormAdmin(FORM_ADMIN_INICIAL)
     setVista('crear')
@@ -162,117 +300,53 @@ function AdminDashboard() {
 
   const abrirModalEditar = (usuario) => {
     setUsuarioEditando(usuario)
-
     setFormUsuario({
       nombre: usuario.nombre || '',
       apellido: usuario.apellido || '',
       email: usuario.email || '',
-      password: '',
+      password: usuario.password || '',
       peso: usuario.peso || '',
       altura: usuario.altura || '',
       nivel_entrenamiento:
-        usuario.nivel_entrenamiento || 'Principiante',
+        usuario.nivel_entrenamiento ||
+        'Principiante',
       objetivo:
-        usuario.objetivo || 'Ganar masa muscular'
+        usuario.objetivo ||
+        'Ganar masa muscular'
     })
-
     setModalEditarAbierto(true)
   }
 
   const guardarNuevoRegistro = async () => {
     setGuardando(true)
-
     try {
       if (tipoAlta === 'admin') {
-        if (
-          !formAdmin.nombre ||
-          !formAdmin.apellido ||
-          !formAdmin.email ||
-          !formAdmin.password
-        ) {
-          mostrarToast(
-            'Completá todos los datos del administrador',
-            'error'
-          )
+        if (!formAdmin.nombre || !formAdmin.apellido || !formAdmin.email || !formAdmin.password) {
+          mostrarToast('Por favor completa todos los campos del Administrador', 'error')
+          return
         }
-
-        const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-        if (!pwdRegex.test(formAdmin.password)) {
-          mostrarToast('La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula y un número.', 'error');
-          return;
-        }
-
-        const res = await createAdmin(formAdmin)
-
-        if (res?.success) {
-          mostrarToast(
-            'Administrador creado correctamente',
-            'success'
-          )
-
-          setFormAdmin(FORM_ADMIN_INICIAL)
-          setVista('usuarios')
-        }
-
-        return
-      }
-
-      if (
-        !formUsuario.nombre ||
-        !formUsuario.apellido ||
-        !formUsuario.email
-      ) {
-        mostrarToast(
-          'Completá Nombre, Apellido y Email',
-          'error'
-        )
-        return
-      }
-
-      const dataToSave = {
-        ...formUsuario
-      }
-
-      if (!dataToSave.password) {
-        dataToSave.password = generarPassword(
-          formUsuario.nombre,
-          formUsuario.apellido
-        )
+        await createAdmin(formAdmin)
+        mostrarToast('Administrador creado con éxito', 'success')
       } else {
-        const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-        if (!pwdRegex.test(dataToSave.password)) {
-          mostrarToast('La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula y un número.', 'error');
-          return;
+        if (!formUsuario.nombre || !formUsuario.apellido || !formUsuario.email) {
+          mostrarToast('Nombre, apellido y email son requeridos', 'error')
+          return
         }
-      }
-
-      const res = await createUsuario(dataToSave)
-
-      if (res?.success) {
-        if (res.data) {
-          setUsuarios(prev => [
-            ...prev,
-            res.data
-          ])
-        } else {
-          await cargarUsuarios()
+        const payload = {
+          ...formUsuario,
+          password: formUsuario.password || generarPassword(formUsuario.nombre, formUsuario.apellido),
+          id_admin: admin?.id || null
         }
-
-        mostrarToast(
-          'Usuario atleta creado correctamente',
-          'success'
-        )
-
-        setFormUsuario(FORM_USUARIO_INICIAL)
-        setVista('usuarios')
+        await createUsuario(payload)
+        mostrarToast('Usuario Atleta creado con éxito', 'success')
       }
+      setFormUsuario(FORM_USUARIO_INICIAL)
+      setFormAdmin(FORM_ADMIN_INICIAL)
+      cambiarVista('usuarios')
+      cargarUsuarios()
     } catch (error) {
       console.error('Error al crear registro:', error)
-
-      mostrarToast(
-        error.message || 'Error al crear el registro',
-        'error'
-      )
+      mostrarToast(error.message || 'Error al crear el registro', 'error')
     } finally {
       setGuardando(false)
     }
@@ -280,77 +354,27 @@ function AdminDashboard() {
 
   const guardarEdicionUsuario = async () => {
     if (!usuarioEditando) return
-
-    if (
-      !formUsuario.nombre ||
-      !formUsuario.apellido ||
-      !formUsuario.email
-    ) {
-      mostrarToast(
-        'Completá Nombre, Apellido y Email',
-        'error'
-      )
+    const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+    if (formUsuario.password && formUsuario.password.trim()) {
+      if (!PASSWORD_REGEX.test(formUsuario.password)) {
+        mostrarToast('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número', 'error')
+        return
+      }
+    } else {
+      mostrarToast('La contraseña es obligatoria al editar el usuario', 'error')
       return
     }
-
     setGuardando(true)
-
     try {
-      const dataToSave = {
-        ...formUsuario
-      }
-
-      if (!dataToSave.password) {
-        delete dataToSave.password
-      }
-
-      const id =
-        usuarioEditando.id ??
-        usuarioEditando.id_usuario
-
-      const res = await updateUsuario(
-        id,
-        dataToSave
-      )
-
-      if (res?.success) {
-        const updated =
-          res.data || {
-            ...usuarioEditando,
-            ...dataToSave
-          }
-
-        setUsuarios(prev =>
-          prev.map(usuario => {
-            const usuarioId =
-              usuario.id ??
-              usuario.id_usuario
-
-            return usuarioId === id
-              ? updated
-              : usuario
-          })
-        )
-
-        mostrarToast(
-          'Usuario actualizado correctamente',
-          'success'
-        )
-
-        setModalEditarAbierto(false)
-        setUsuarioEditando(null)
-      }
+      const idUsuario = usuarioEditando.id ?? usuarioEditando.id_usuario
+      await updateUsuario(idUsuario, formUsuario)
+      mostrarToast('Usuario actualizado correctamente', 'success')
+      setModalEditarAbierto(false)
+      setUsuarioEditando(null)
+      cargarUsuarios()
     } catch (error) {
-      console.error(
-        'Error al actualizar usuario:',
-        error
-      )
-
-      mostrarToast(
-        error.message ||
-        'Error al actualizar el usuario',
-        'error'
-      )
+      console.error('Error al editar usuario:', error)
+      mostrarToast(error.message || 'Error al actualizar usuario', 'error')
     } finally {
       setGuardando(false)
     }
@@ -358,72 +382,192 @@ function AdminDashboard() {
 
   const handleEliminarUsuario = async () => {
     if (!confirmEliminar) return
-
     setEliminando(true)
-
     try {
-      const id =
-        confirmEliminar.id ??
-        confirmEliminar.id_usuario
-
-      const res = await deleteUsuario(id)
-
-      if (res?.success) {
-        setUsuarios(prev =>
-          prev.filter(usuario => {
-            const usuarioId =
-              usuario.id ??
-              usuario.id_usuario
-
-            return usuarioId !== id
-          })
-        )
-
-        mostrarToast(
-          `${confirmEliminar.nombre} ${confirmEliminar.apellido} fue eliminado`,
-          'success'
-        )
-      }
+      const idUsuario = confirmEliminar.id ?? confirmEliminar.id_usuario
+      await deleteUsuario(idUsuario)
+      setUsuarios(prev => prev.filter(u => (u.id ?? u.id_usuario) !== idUsuario))
+      mostrarToast(`${confirmEliminar.nombre} ${confirmEliminar.apellido} fue eliminado`, 'success')
     } catch (error) {
-      console.error(
-        'Error al eliminar usuario:',
-        error
-      )
-
-      mostrarToast(
-        error.message ||
-        'Error al eliminar el usuario',
-        'error'
-      )
+      console.error('Error al eliminar usuario:', error)
+      mostrarToast(error.message || 'Error al eliminar el usuario', 'error')
     } finally {
       setEliminando(false)
       setConfirmEliminar(null)
     }
   }
 
-  const usuariosFiltrados = usuarios.filter(usuario => {
-    const texto = busqueda
-      .trim()
-      .toLowerCase()
+  // ─── ACCIONES DE EJERCICIOS (ADMIN) ───────────────────────────────────────
+  const abrirEditarEjercicio = (ej) => {
+    setEjercicioEditando(ej)
+    setFormEjercicio({
+      nombre: ej.nombre || '',
+      grupo_muscular: ej.grupo_muscular || 'Pecho',
+      descripcion: ej.descripcion || '',
+      gif: ej.gif || ''
+    })
+    setModalCrearEjercicio(true)
+  }
 
-    return (
-      usuario.nombre
-        ?.toLowerCase()
-        .includes(texto) ||
-      usuario.apellido
-        ?.toLowerCase()
-        .includes(texto) ||
-      usuario.email
-        ?.toLowerCase()
-        .includes(texto) ||
-      usuario.objetivo
-        ?.toLowerCase()
-        .includes(texto) ||
-      usuario.nivel_entrenamiento
-        ?.toLowerCase()
-        .includes(texto)
+  const handleGuardarEjercicio = async () => {
+    if (!formEjercicio.nombre.trim()) {
+      return mostrarToast('El nombre del ejercicio es obligatorio', 'error')
+    }
+    setGuardando(true)
+    try {
+      if (ejercicioEditando) {
+        const res = await updateEjercicio(ejercicioEditando.id_ejercicio, formEjercicio)
+        if (res?.success) {
+          mostrarToast('Ejercicio actualizado correctamente', 'success')
+        }
+      } else {
+        const res = await createEjercicio(formEjercicio)
+        if (res?.success) {
+          mostrarToast('Ejercicio agregado al catálogo oficial', 'success')
+        }
+      }
+      setModalCrearEjercicio(false)
+      setEjercicioEditando(null)
+      setFormEjercicio(FORM_EJERCICIO_INICIAL)
+      cargarEjercicios()
+    } catch (error) {
+      mostrarToast(error.message || 'Error al guardar ejercicio', 'error')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const handleEliminarEjercicio = async () => {
+    if (!confirmEliminarEjercicio) return
+    setEliminando(true)
+    try {
+      await deleteEjercicio(confirmEliminarEjercicio.id_ejercicio)
+      mostrarToast('Ejercicio eliminado del catálogo', 'success')
+      setConfirmEliminarEjercicio(null)
+      cargarEjercicios()
+    } catch (error) {
+      mostrarToast(error.message || 'Error al eliminar ejercicio', 'error')
+    } finally {
+      setEliminando(false)
+    }
+  }
+
+  // ─── ACCIONES DE RUTINAS PREARMADAS (ADMIN) ──────────────────────────────
+  const abrirEditarRutina = (r) => {
+    setRutinaEditando(r)
+    setFormRutina({
+      nombre: r.nombre || '',
+      descripcion: r.descripcion || '',
+      dia_asignado: r.dia_asignado || ''
+    })
+    setRutinaEjercicios(
+      r.ejercicios && r.ejercicios.length > 0
+        ? r.ejercicios.map(e => ({
+            id_ejercicio: e.id_ejercicio,
+            nombre: e.nombre,
+            grupo_muscular: e.grupo_muscular,
+            gif: e.gif,
+            series: e.series || 3,
+            repeticiones: e.repeticiones || 12,
+            peso: e.peso || 0
+          }))
+        : []
     )
-  })
+    setModalCrearRutina(true)
+  }
+
+  const agregarEjercicioARutinaDraft = () => {
+    if (!ejercicioSeleccionadoId) return
+    const ej = ejerciciosList.find(e => e.id_ejercicio === parseInt(ejercicioSeleccionadoId, 10))
+    if (!ej) return
+    setRutinaEjercicios(prev => [
+      ...prev,
+      {
+        id_ejercicio: ej.id_ejercicio,
+        nombre: ej.nombre,
+        grupo_muscular: ej.grupo_muscular,
+        gif: ej.gif,
+        series: 3,
+        repeticiones: 12,
+        peso: 0
+      }
+    ])
+    setEjercicioSeleccionadoId('')
+  }
+
+  const actualizarMetricaRutinaDraft = (index, field, value) => {
+    setRutinaEjercicios(prev => {
+      const copy = [...prev]
+      copy[index][field] = value
+      return copy
+    })
+  }
+
+  const quitarEjercicioRutinaDraft = (index) => {
+    setRutinaEjercicios(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleGuardarRutinaPrearmada = async () => {
+    if (!formRutina.nombre.trim()) {
+      return mostrarToast('El nombre de la rutina es obligatorio', 'error')
+    }
+    if (rutinaEjercicios.length === 0) {
+      return mostrarToast('Agrega al menos un ejercicio a la rutina', 'error')
+    }
+
+    setGuardando(true)
+    try {
+      const payload = {
+        nombre: formRutina.nombre.trim(),
+        descripcion: formRutina.descripcion.trim(),
+        dia_asignado: formRutina.dia_asignado || null,
+        id_usuario: null, // Rutina prearmada global
+        prearmada: 1,
+        es_favorita: 0,
+        ejercicios: rutinaEjercicios.map(e => ({
+          id_ejercicio: e.id_ejercicio || e.id,
+          series: Number(e.series) || 3,
+          repeticiones: Number(e.repeticiones) || 10,
+          peso: Number(e.peso) || 0
+        }))
+      }
+      if (rutinaEditando) {
+        const res = await updateRutina(rutinaEditando.id_rutina, payload)
+        if (res?.success) {
+          mostrarToast('Rutina prearmada actualizada correctamente', 'success')
+        }
+      } else {
+        const res = await createRutina(payload)
+        if (res?.success) {
+          mostrarToast('Rutina prearmada creada correctamente', 'success')
+        }
+      }
+      setModalCrearRutina(false)
+      setRutinaEditando(null)
+      setFormRutina(FORM_RUTINA_INICIAL)
+      setRutinaEjercicios([])
+      cargarRutinas()
+    } catch (error) {
+      mostrarToast(error.message || 'Error al procesar rutina prearmada', 'error')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const handleEliminarRutina = async () => {
+    if (!confirmEliminarRutina) return
+    setEliminando(true)
+    try {
+      await deleteRutina(confirmEliminarRutina.id_rutina)
+      mostrarToast('Rutina prearmada eliminada', 'success')
+      setConfirmEliminarRutina(null)
+      cargarRutinas()
+    } catch (error) {
+      mostrarToast(error.message || 'Error al eliminar rutina', 'error')
+    } finally {
+      setEliminando(false)
+    }
+  }
 
   const handleLogout = () => {
     logout()
@@ -431,10 +575,7 @@ function AdminDashboard() {
   }
 
   const moduloPendiente = (nombre) => {
-    mostrarToast(
-      `${nombre}: módulo en desarrollo`,
-      'error'
-    )
+    mostrarToast(`${nombre}: Sección en desarrollo`, 'error')
   }
 
   const cambiarVista = (nuevaVista) => {
@@ -442,10 +583,76 @@ function AdminDashboard() {
     setBusqueda('')
   }
 
+  // Filtros
+  const usuariosFiltrados = usuarios.filter(u => {
+    const texto = busqueda.trim().toLowerCase()
+    return (
+      u.nombre?.toLowerCase().includes(texto) ||
+      u.apellido?.toLowerCase().includes(texto) ||
+      u.email?.toLowerCase().includes(texto) ||
+      u.objetivo?.toLowerCase().includes(texto) ||
+      u.nivel_entrenamiento?.toLowerCase().includes(texto)
+    )
+  })
+
+  const asistenciasFiltradas = asistenciasList.filter(a => {
+    const texto = busquedaAsistencia.trim().toLowerCase()
+    if (!texto) return true
+    const nombreCompleto = (a.nombre_completo || `${a.nombre || ''} ${a.apellido || ''}`).toLowerCase()
+    return nombreCompleto.includes(texto) || a.email?.toLowerCase().includes(texto)
+  })
+
+  const ejerciciosFiltrados = ejerciciosList.filter(e => {
+    const texto = busquedaEjercicio.trim().toLowerCase()
+    const coincideTexto = !texto || e.nombre?.toLowerCase().includes(texto) || e.descripcion?.toLowerCase().includes(texto)
+    const coincideGrupo = !filtroGrupoEjercicio || e.grupo_muscular === filtroGrupoEjercicio
+    return coincideTexto && coincideGrupo
+  })
+
+  const rutinasFiltradas = rutinasList.filter(r => {
+    const texto = busquedaRutina.trim().toLowerCase()
+    if (!texto) return true
+    return r.nombre?.toLowerCase().includes(texto) || r.descripcion?.toLowerCase().includes(texto) || r.dia_asignado?.toLowerCase().includes(texto)
+  })
+
+  // Formateador de Fecha y Hora legible (DD/MM/YYYY HH:mm)
+  const formatearFechaHora = (fechaInput) => {
+    if (!fechaInput) return { fecha: '-', hora: '-' }
+
+    // Parseo directo si viene como string SQL 'YYYY-MM-DD HH:mm:ss' para evitar desfases de zona horaria
+    if (typeof fechaInput === 'string' && fechaInput.includes('-')) {
+      const parts = fechaInput.replace('T', ' ').split(' ')
+      const datePart = parts[0]
+      const timePart = parts[1] ? parts[1].slice(0, 5) : ''
+
+      const [anio, mes, dia] = datePart.split('-')
+      if (anio && mes && dia) {
+        return {
+          fecha: `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${anio}`,
+          hora: timePart ? `${timePart} hs` : 'Registrada'
+        }
+      }
+    }
+
+    const d = new Date(fechaInput)
+    if (isNaN(d.getTime())) return { fecha: String(fechaInput), hora: '-' }
+    const dia = String(d.getDate()).padStart(2, '0')
+    const mes = String(d.getMonth() + 1).padStart(2, '0')
+    const anio = d.getFullYear()
+    const horas = String(d.getHours()).padStart(2, '0')
+    const minutos = String(d.getMinutes()).padStart(2, '0')
+    const tieneHora = !(horas === '00' && minutos === '00' && d.getSeconds() === 0)
+    return {
+      fecha: `${dia}/${mes}/${anio}`,
+      hora: tieneHora ? `${horas}:${minutos} hs` : 'Registrada'
+    }
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-layout">
 
+        {/* SIDEBAR ADMIN (6 ELEMENTOS) */}
         <nav className="admin-sidebar">
 
           <div className="sidebar-logo-container">
@@ -460,128 +667,80 @@ function AdminDashboard() {
 
             <button
               type="button"
-              className={`sidebar-item ${vista === 'home'
-                ? 'activo'
-                : ''
-                }`}
-              onClick={() =>
-                cambiarVista('home')
-              }
+              className={`sidebar-item ${vista === 'home' ? 'activo' : ''}`}
+              onClick={() => cambiarVista('home')}
             >
               <img
                 src="/icons/admin/home.png"
-                alt=""
+                alt="Home"
                 className="sidebar-icon-img"
               />
-              <span className="sidebar-text">
-                Home
-              </span>
+              <span className="sidebar-text">Home</span>
             </button>
 
             <button
               type="button"
-              className={`sidebar-item ${vista === 'usuarios' ||
-                vista === 'crear'
-                ? 'activo'
-                : ''
-                }`}
-              onClick={() =>
-                cambiarVista('usuarios')
-              }
+              className={`sidebar-item ${vista === 'usuarios' || vista === 'crear' ? 'activo' : ''}`}
+              onClick={() => cambiarVista('usuarios')}
             >
               <img
                 src="/icons/admin/usuarios.png"
-                alt=""
+                alt="Usuarios"
                 className="sidebar-icon-img"
               />
-              <span className="sidebar-text">
-                Usuarios
-              </span>
+              <span className="sidebar-text">Usuarios</span>
             </button>
 
             <button
               type="button"
-              className="sidebar-item"
-              onClick={() =>
-                moduloPendiente('Estadísticas')
-              }
-            >
-              <img
-                src="/icons/admin/estadisticas-navbar.png"
-                alt=""
-                className="sidebar-icon-img"
-              />
-              <span className="sidebar-text">
-                Estadísticas
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="sidebar-item"
-              onClick={() =>
-                moduloPendiente('Equipamiento')
-              }
-            >
-              <img
-                src="/icons/admin/mancuerna.png"
-                alt=""
-                className="sidebar-icon-img"
-              />
-              <span className="sidebar-text">
-                Equipamiento
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="sidebar-item"
-              onClick={() =>
-                moduloPendiente('Asistencia')
-              }
+              className={`sidebar-item ${vista === 'asistencia' ? 'activo' : ''}`}
+              onClick={() => cambiarVista('asistencia')}
             >
               <img
                 src="/icons/admin/asistencia.png"
-                alt=""
+                alt="Asistencia"
                 className="sidebar-icon-img"
               />
-              <span className="sidebar-text">
-                Asistencia
-              </span>
+              <span className="sidebar-text">Asistencia</span>
             </button>
 
             <button
               type="button"
-              className="sidebar-item"
-              onClick={() =>
-                moduloPendiente('Ejercicios')
-              }
+              className={`sidebar-item ${vista === 'ejercicios' ? 'activo' : ''}`}
+              onClick={() => cambiarVista('ejercicios')}
             >
               <img
                 src="/icons/admin/ejercicios.png"
-                alt=""
+                alt="Ejercicios"
                 className="sidebar-icon-img"
               />
-              <span className="sidebar-text">
-                Ejercicios
-              </span>
+              <span className="sidebar-text">Ejercicios</span>
             </button>
 
             <button
               type="button"
-              className="sidebar-item"
-              onClick={() =>
-                moduloPendiente('Rutina')
-              }
+              className={`sidebar-item ${vista === 'rutinas' ? 'activo' : ''}`}
+              onClick={() => cambiarVista('rutinas')}
             >
               <img
                 src="/icons/admin/rutina.png"
-                alt=""
+                alt="Rutina"
                 className="sidebar-icon-img"
               />
-              <span className="sidebar-text">
-                Rutina
-              </span>
+              <span className="sidebar-text">Rutina</span>
+            </button>
+
+            <button
+              type="button"
+              className={`sidebar-item ${vista === 'equipamiento' ? 'activo' : ''}`}
+              onClick={() => cambiarVista('equipamiento')}
+            >
+              <img
+                src="/icons/admin/mancuerna.png"
+                alt="Equipamiento"
+                className="sidebar-icon-img"
+              />
+              <span className="sidebar-text">Equipamiento</span>
             </button>
 
           </div>
@@ -597,20 +756,19 @@ function AdminDashboard() {
                 alt=""
                 className="sidebar-icon-img"
               />
-              <span className="sidebar-text">
-                Cerrar sesión
-              </span>
+              <span className="sidebar-text">Cerrar sesión</span>
             </button>
           </div>
 
         </nav>
 
-        <div className="admin-main">
+        <div className="admin-main main-content">
 
+          {/* TOPBAR */}
           <header className="admin-topbar">
             {/* IZQUIERDA */}
             <div className="topbar-left">
-              {vista === 'usuarios' && (
+              {(vista === 'usuarios' || vista === 'asistencia' || vista === 'ejercicios' || vista === 'rutinas' || vista === 'equipamiento' || vista === 'perfil') && (
                 <button
                   type="button"
                   className="topbar-action mobile-logout"
@@ -618,7 +776,7 @@ function AdminDashboard() {
                 >
                   <img
                     src="/icons/admin/cerrar-sesion.png"
-                    alt=""
+                    alt="Cerrar sesión"
                     className="topbar-icon-img"
                   />
                 </button>
@@ -648,11 +806,11 @@ function AdminDashboard() {
 
             {/* DERECHA */}
             <div className="topbar-right">
-              {vista === 'home' && (
+              {(vista === 'home' || vista === 'equipamiento' || vista === 'perfil') && (
                 <button
                   type="button"
-                  className="topbar-action perfil-admin-topbar"
-                  onClick={() => moduloPendiente('Perfil')}
+                  className={`topbar-action perfil-admin-topbar ${vista === 'perfil' ? 'activo' : ''}`}
+                  onClick={() => cambiarVista('perfil')}
                 >
                   <img
                     src="/icons/admin/perfil.png"
@@ -666,76 +824,82 @@ function AdminDashboard() {
               {vista === 'usuarios' && (
                 <button
                   type="button"
-                  className="topbar-action btn-add-user"
+                  className="btn-neon-grad"
                   onClick={abrirCrear}
                 >
-                  <img
-                    src="/icons/admin/agregar-usuario.png"
-                    alt=""
-                    className="topbar-icon-img"
-                  />
-                  <span className="topbar-text">
-                    Agregar usuario
-                  </span>
+                  <span>+ Agregar Usuario</span>
+                </button>
+              )}
+              {vista === 'ejercicios' && (
+                <button
+                  type="button"
+                  className="btn-neon-grad"
+                  onClick={() => {
+                    setEjercicioEditando(null)
+                    setFormEjercicio(FORM_EJERCICIO_INICIAL)
+                    setModalCrearEjercicio(true)
+                  }}
+                >
+                  <span>+ Nuevo Ejercicio</span>
+                </button>
+              )}
+              {vista === 'rutinas' && (
+                <button
+                  type="button"
+                  className="btn-neon-grad"
+                  onClick={() => {
+                    setRutinaEditando(null)
+                    setFormRutina(FORM_RUTINA_INICIAL)
+                    setRutinaEjercicios([])
+                    setModalCrearRutina(true)
+                  }}
+                >
+                  <span>+ Nueva Rutina</span>
+                </button>
+              )}
+              {vista === 'asistencia' && (
+                <button
+                  type="button"
+                  className="btn-neon-grad"
+                  onClick={() => cargarAsistencias(filtroFechaAsistencia)}
+                >
+                  <span>Actualizar</span>
                 </button>
               )}
             </div>
           </header>
 
+          {/* VISTA HOME */}
           {vista === 'home' && (
             <main className="admin-content admin-home">
-
               <section className="home-welcome">
-
-                <img
-                  src="/logo.png"
-                  alt="Lifting Up"
-                  className="home-logo"
-                />
-
-                <h1>
-                  “Hola, {admin?.nombre || 'Administrador'}”
-                </h1>
-
+                <h1>“Hola, {admin?.nombre || 'Administrador'}”</h1>
               </section>
 
               <section className="home-cards">
-
-                <div className="home-card">
+                <div className="home-card" onClick={() => cambiarVista('usuarios')} style={{ cursor: 'pointer' }}>
                   <img
                     src="/icons/admin/flecha-derecha.png"
                     alt=""
                     className="summary-arrow-img"
                   />
-
-                  <h2>
-                    Usuarios Activos:
-                  </h2>
-
+                  <h2>Usuarios Registrados:</h2>
                   <p>
-                    {usuarios.filter(
-                      usuario =>
-                        usuario.activo === 1 ||
-                        usuario.estado === 'Activo'
-                    ).length + adminsList.length}{' '}
-                    usuarios activos
+                    {usuarios.length + adminsList.length} usuarios totales ({usuarios.filter(u => u.activo === 1 || u.estado === 'Activo').length} atletas activos)
                   </p>
                 </div>
 
-                <div className="home-card">
+                <div className="home-card" onClick={() => cambiarVista('asistencia')} style={{ cursor: 'pointer' }}>
                   <img
                     src="/icons/admin/flecha-derecha.png"
                     alt=""
                     className="summary-arrow-img"
                   />
-
-                  <h2>
-                    Asistencias hoy:
-                  </h2>
-
+                  <h2>Control de Asistencia:</h2>
+                  <p>Consultar registro diario y mensual de atletas</p>
                   <div className="home-card-icons">
                     <img
-                      src="/icons/admin/estadisticas.png"
+                      src="/icons/admin/asistencia.png"
                       alt=""
                       className="summary-icon-img"
                     />
@@ -747,53 +911,38 @@ function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="home-card">
+                <div className="home-card" onClick={() => cambiarVista('rutinas')} style={{ cursor: 'pointer' }}>
                   <img
                     src="/icons/admin/flecha-derecha.png"
                     alt=""
                     className="summary-arrow-img"
                   />
-
-                  <h2>
-                    Equipos en mantenimiento:
-                  </h2>
-
+                  <h2>Rutinas y Ejercicios:</h2>
+                  <p>Configurar catálogo y rutinas prearmadas oficiales</p>
                   <div className="home-card-icons">
                     <img
-                      src="/icons/admin/mancuerna.png"
+                      src="/icons/admin/ejercicios.png"
                       alt=""
                       className="summary-icon-img"
                     />
                     <img
-                      src="/icons/admin/pesa-rusa.png"
-                      alt=""
-                      className="summary-icon-img"
-                    />
-                    <img
-                      src="/icons/admin/pesas.png"
+                      src="/icons/admin/rutina.png"
                       alt=""
                       className="summary-icon-img"
                     />
                   </div>
                 </div>
-
               </section>
-
             </main>
           )}
 
+          {/* VISTA USUARIOS */}
           {vista === 'usuarios' && (
             <main className="admin-content">
-
               <section className="admin-title-section">
-                <h1 className="admin-titulo">
-                  Gestión de Usuarios
-                </h1>
-
+                <h1 className="admin-titulo">Gestión de Usuarios</h1>
                 <p className="admin-subtitulo">
-                  Bienvenido,{' '}
-                  {admin?.nombre ||
-                    'Administrador'}
+                  Bienvenido, {admin?.nombre || 'Administrador'}
                 </p>
               </section>
 
@@ -802,15 +951,12 @@ function AdminDashboard() {
                   type="search"
                   placeholder="Buscar por nombre, email, objetivo..."
                   value={busqueda}
-                  onChange={(e) =>
-                    setBusqueda(e.target.value)
-                  }
+                  onChange={(e) => setBusqueda(e.target.value)}
                   className="buscador"
                 />
               </section>
 
               <section className="admin-users-section">
-
                 {loading ? (
                   <div className="loading-state">
                     <div className="loading-spinner" />
@@ -824,63 +970,357 @@ function AdminDashboard() {
                     onDelete={setConfirmEliminar}
                   />
                 )}
-
               </section>
-
             </main>
           )}
 
+          {/* VISTA ASISTENCIA (ADMIN) */}
+          {vista === 'asistencia' && (
+            <main className="admin-content">
+              <section className="admin-title-section">
+                <h1 className="admin-titulo">Registro de Asistencia</h1>
+                <p className="admin-subtitulo">
+                  Historial de asistencias de atletas con fecha y hora de ingreso
+                </p>
+              </section>
+
+              {/* BARRA DE FILTROS */}
+              <div className="panel-filtro-bar">
+                <input
+                  type="search"
+                  placeholder="Buscar por alumno o email..."
+                  value={busquedaAsistencia}
+                  onChange={(e) => setBusquedaAsistencia(e.target.value)}
+                  className="buscador"
+                  style={{ flex: 1, minWidth: '220px', height: '46px' }}
+                />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="date"
+                    value={filtroFechaAsistencia}
+                    onChange={(e) => setFiltroFechaAsistencia(e.target.value)}
+                    className="input-filtro-fecha"
+                    title="Filtrar por fecha específica"
+                  />
+                  {filtroFechaAsistencia && (
+                    <button
+                      type="button"
+                      className="btn-cancelar"
+                      onClick={() => setFiltroFechaAsistencia('')}
+                      style={{ padding: '8px 12px', minHeight: 'unset', fontSize: '12px' }}
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {loadingAsistencia ? (
+                <div className="loading-state">
+                  <div className="loading-spinner" />
+                  <p>Cargando asistencias...</p>
+                </div>
+              ) : asistenciasFiltradas.length > 0 ? (
+                <div className="asistencia-grid">
+                  {asistenciasFiltradas.map((a) => {
+                    const dt = formatearFechaHora(a.fecha_formateada || a.fecha)
+                    const nombreMostrar = a.nombre_completo || (a.nombre ? `${a.nombre} ${a.apellido || ''}`.trim() : (a.email || 'Usuario'))
+                    return (
+                      <div key={a.id_asistencia} className="asistencia-card">
+                        <div className="asistencia-header">
+                          <div>
+                            <h3 className="asistencia-alumno-nombre">
+                              {nombreMostrar}
+                            </h3>
+                            {a.email && <p className="asistencia-alumno-email">{a.email}</p>}
+                          </div>
+                          <span className="badge-estado activo">Presente</span>
+                        </div>
+
+                        <div className="asistencia-datetime-container">
+                          <span className="asistencia-badge-fecha">
+                            📅 {dt.fecha}
+                          </span>
+                          <span className="asistencia-badge-hora">
+                            ⏰ {dt.hora}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="usuarios-vacio">
+                  <div className="usuarios-vacio-icon">📅</div>
+                  <p>No se encontraron registros de asistencia para los filtros seleccionados.</p>
+                </div>
+              )}
+            </main>
+          )}
+
+          {/* VISTA EJERCICIOS (ADMIN) */}
+          {vista === 'ejercicios' && (
+            <main className="admin-content">
+              <section className="admin-title-section">
+                <h1 className="admin-titulo">Catálogo Oficial de Ejercicios</h1>
+                <p className="admin-subtitulo">
+                  Crea y administra los ejercicios oficiales que los atletas podrán seleccionar
+                </p>
+              </section>
+
+              <div className="panel-filtro-bar">
+                <input
+                  type="search"
+                  placeholder="Buscar ejercicio por nombre o descripción..."
+                  value={busquedaEjercicio}
+                  onChange={(e) => setBusquedaEjercicio(e.target.value)}
+                  className="buscador"
+                  style={{ flex: 1, minWidth: '220px', height: '46px' }}
+                />
+
+                <select
+                  value={filtroGrupoEjercicio}
+                  onChange={(e) => setFiltroGrupoEjercicio(e.target.value)}
+                  className="input-filtro-fecha"
+                  style={{ minWidth: '160px' }}
+                >
+                  <option value="">Todos los grupos</option>
+                  {GRUPOS_MUSCULARES.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+
+              {loadingEjercicios ? (
+                <div className="loading-state">
+                  <div className="loading-spinner" />
+                  <p>Cargando ejercicios...</p>
+                </div>
+              ) : ejerciciosFiltrados.length > 0 ? (
+                <div className="ejercicios-admin-grid">
+                  {ejerciciosFiltrados.map((ej) => (
+                    <div key={ej.id_ejercicio} className="ejercicio-card-admin">
+                      {ej.gif ? (
+                        <img
+                          src={ej.gif}
+                          alt={ej.nombre}
+                          className="ejercicio-gif-thumb"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <div className="ejercicio-gif-placeholder">
+                          Sin GIF
+                        </div>
+                      )}
+
+                      <div className="ejercicio-info">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <h3 className="ejercicio-nombre">{ej.nombre}</h3>
+                          <div className="card-action-btns">
+                            <button
+                              type="button"
+                              className="btn-card-icon edit"
+                              onClick={() => abrirEditarEjercicio(ej)}
+                              title="Editar ejercicio"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-card-icon delete"
+                              onClick={() => setConfirmEliminarEjercicio(ej)}
+                              title="Eliminar ejercicio"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        {ej.grupo_muscular && (
+                          <span className="ejercicio-grupo">{ej.grupo_muscular}</span>
+                        )}
+                        <p className="ejercicio-descripcion">
+                          {ej.descripcion || 'Sin descripción detallada.'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="usuarios-vacio">
+                  <div className="usuarios-vacio-icon">🏋️</div>
+                  <p>No hay ejercicios cargados en este grupo muscular.</p>
+                  <button
+                    type="button"
+                    className="btn-neon-grad"
+                    onClick={() => {
+                      setEjercicioEditando(null)
+                      setFormEjercicio(FORM_EJERCICIO_INICIAL)
+                      setModalCrearEjercicio(true)
+                    }}
+                    style={{ marginTop: '16px' }}
+                  >
+                    + Crear Primer Ejercicio
+                  </button>
+                </div>
+              )}
+            </main>
+          )}
+
+          {/* VISTA RUTINAS PREARMADAS (ADMIN) */}
+          {vista === 'rutinas' && (
+            <main className="admin-content">
+              <section className="admin-title-section">
+                <h1 className="admin-titulo">Rutinas Prearmadas</h1>
+                <p className="admin-subtitulo">
+                  Plantillas oficiales globales para que los atletas las consulten o usen de base
+                </p>
+              </section>
+
+              <section className="admin-search-section">
+                <input
+                  type="search"
+                  placeholder="Buscar rutinas prearmadas..."
+                  value={busquedaRutina}
+                  onChange={(e) => setBusquedaRutina(e.target.value)}
+                  className="buscador"
+                />
+              </section>
+
+              {loadingRutinas ? (
+                <div className="loading-state">
+                  <div className="loading-spinner" />
+                  <p>Cargando rutinas prearmadas...</p>
+                </div>
+              ) : rutinasFiltradas.length > 0 ? (
+                <div className="rutinas-admin-grid">
+                  {rutinasFiltradas.map((r) => (
+                    <div key={r.id_rutina} className="rutina-admin-card">
+                      <div className="rutina-header">
+                        <div>
+                          <h3 className="rutina-titulo">{r.nombre}</h3>
+                          {r.dia_asignado && (
+                            <span className="badge-estado activo" style={{ marginTop: '4px', fontSize: '11px' }}>
+                              Día: {r.dia_asignado}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="badge-prearmada">Oficial</span>
+                          <div className="card-action-btns">
+                            <button
+                              type="button"
+                              className="btn-card-icon edit"
+                              onClick={() => abrirEditarRutina(r)}
+                              title="Editar rutina"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-card-icon delete"
+                              onClick={() => setConfirmEliminarRutina(r)}
+                              title="Eliminar rutina"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {r.descripcion && (
+                        <p className="rutina-descripcion">{r.descripcion}</p>
+                      )}
+
+                      <div className="rutina-ejercicios-detalle">
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--admin-muted)', marginBottom: '4px' }}>
+                          Ejercicios ({r.ejercicios?.length || 0}):
+                        </div>
+                        {r.ejercicios && r.ejercicios.length > 0 ? (
+                          r.ejercicios.map((ej, idx) => (
+                            <div key={idx} className="rutina-ejercicio-row">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                                {ej.gif ? (
+                                  <img
+                                    src={ej.gif}
+                                    alt={ej.nombre}
+                                    className="rutina-ejercicio-mini-gif"
+                                    onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                  />
+                                ) : (
+                                  <div className="rutina-ejercicio-mini-placeholder">💪</div>
+                                )}
+                                <div className="rutina-ejercicio-info">
+                                  <span className="rutina-ejercicio-nombre-text">{ej.nombre}</span>
+                                  <span className="rutina-ejercicio-grupo">{ej.grupo_muscular || 'General'}</span>
+                                </div>
+                              </div>
+                              <span className="ejercicio-row-metricas">
+                                {ej.series}s × {ej.repeticiones}r {Number(ej.peso) > 0 ? `(${ej.peso} kg)` : ''}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <span style={{ fontSize: '12px', color: '#7f7f7f' }}>Sin ejercicios detallados</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="usuarios-vacio">
+                  <div className="usuarios-vacio-icon">📋</div>
+                  <p>No hay rutinas prearmadas registradas.</p>
+                  <button
+                    type="button"
+                    className="btn-neon-grad"
+                    onClick={() => {
+                      setRutinaEditando(null)
+                      setFormRutina(FORM_RUTINA_INICIAL)
+                      setRutinaEjercicios([])
+                      setModalCrearRutina(true)
+                    }}
+                    style={{ marginTop: '16px' }}
+                  >
+                    + Crear Primera Rutina Prearmada
+                  </button>
+                </div>
+              )}
+            </main>
+          )}
+
+          {/* VISTA CREAR USUARIO / ADMIN */}
           {vista === 'crear' && (
             <main className="admin-content crear-page">
-
               <section className="admin-title-section">
-                <h1 className="admin-titulo">
-                  Agregar Nuevo Usuario
-                </h1>
-
+                <h1 className="admin-titulo">Agregar Nuevo Registro</h1>
                 <p className="admin-subtitulo">
-                  Bienvenido,{' '}
-                  {admin?.nombre ||
-                    'Administrador'}
+                  Bienvenido, {admin?.nombre || 'Administrador'}
                 </p>
               </section>
 
               <div className="tipo-usuario-tabs">
-
                 <button
                   type="button"
-                  className={`tipo-usuario-btn ${tipoAlta === 'admin'
-                    ? 'seleccionado'
-                    : ''
-                    }`}
-                  onClick={() =>
-                    setTipoAlta('admin')
-                  }
+                  className={`tipo-usuario-btn ${tipoAlta === 'admin' ? 'seleccionado' : ''}`}
+                  onClick={() => setTipoAlta('admin')}
                 >
                   Usuario Admin
                 </button>
-
                 <button
                   type="button"
-                  className={`tipo-usuario-btn ${tipoAlta === 'usuario'
-                    ? 'seleccionado'
-                    : ''
-                    }`}
-                  onClick={() =>
-                    setTipoAlta('usuario')
-                  }
+                  className={`tipo-usuario-btn ${tipoAlta === 'usuario' ? 'seleccionado' : ''}`}
+                  onClick={() => setTipoAlta('usuario')}
                 >
                   Usuario Atleta
                 </button>
-
               </div>
 
               <section className="crear-form-card">
-
                 <div className="tipo-seleccionado">
-                  {tipoAlta === 'admin'
-                    ? 'Usuario Admin'
-                    : 'Usuario Atleta'}
+                  {tipoAlta === 'admin' ? 'Usuario Admin' : 'Usuario Atleta'}
                 </div>
 
                 {tipoAlta === 'admin' ? (
@@ -909,14 +1349,27 @@ function AdminDashboard() {
                       ? 'Crear Administrador'
                       : 'Crear Usuario'}
                 </button>
-
               </section>
+            </main>
+          )}
 
+          {/* VISTA EQUIPAMIENTO */}
+          {vista === 'equipamiento' && (
+            <main className="admin-content dashboard-content">
+              <EquipamientoView />
+            </main>
+          )}
+
+          {/* VISTA PERFIL ADMIN */}
+          {vista === 'perfil' && (
+            <main className="admin-content dashboard-content">
+              <PerfilAdminView />
             </main>
           )}
 
         </div>
 
+        {/* MODAL EDITAR USUARIO */}
         <UsuarioModal
           isOpen={modalEditarAbierto}
           title="Editar Usuario"
@@ -925,11 +1378,7 @@ function AdminDashboard() {
             setUsuarioEditando(null)
           }}
           onSave={guardarEdicionUsuario}
-          saveText={
-            guardando
-              ? 'Guardando...'
-              : 'Guardar'
-          }
+          saveText={guardando ? 'Guardando...' : 'Guardar'}
           disabled={guardando}
         >
           <UsuarioForm
@@ -940,6 +1389,7 @@ function AdminDashboard() {
           />
         </UsuarioModal>
 
+        {/* MODAL VER DETALLE USUARIO */}
         <UsuarioModal
           isOpen={Boolean(modalVer)}
           title="Detalle del Usuario"
@@ -951,92 +1401,338 @@ function AdminDashboard() {
           {modalVer && (
             <div className="detalle-container">
               {[
-                [
-                  'ID',
-                  modalVer.id ??
-                  modalVer.id_usuario
-                ],
-                [
-                  'Nombre completo',
-                  `${modalVer.nombre} ${modalVer.apellido}`
-                ],
+                ['ID', modalVer.id ?? modalVer.id_usuario],
+                ['Nombre completo', `${modalVer.nombre} ${modalVer.apellido}`],
                 ['Email', modalVer.email],
-                [
-                  'Contraseña',
-                  modalVer.password
-                    ? '••••••'
-                    : '—'
-                ],
-                [
-                  'Peso',
-                  modalVer.peso
-                    ? `${modalVer.peso} kg`
-                    : '—'
-                ],
-                [
-                  'Altura',
-                  modalVer.altura
-                    ? `${modalVer.altura} m`
-                    : '—'
-                ],
-                [
-                  'Nivel',
-                  modalVer.nivel_entrenamiento ||
-                  '—'
-                ],
-                [
-                  'Objetivo',
-                  modalVer.objetivo || '—'
-                ],
-                [
-                  'Estado',
-                  modalVer.estado || 'Activo'
-                ],
-                modalVer.rol !== 'admin' ? [
-                  'Estado Email',
-                  modalVer.email_verificado === 1 ? 'Verificado' : 'Pendiente'
-                ] : null
+                ['Contraseña', modalVer.password ? '••••••' : '—'],
+                ['Peso', modalVer.peso ? `${modalVer.peso} kg` : '—'],
+                ['Altura', modalVer.altura ? `${modalVer.altura} m` : '—'],
+                ['Nivel', modalVer.nivel_entrenamiento || '—'],
+                ['Objetivo', modalVer.objetivo || '—'],
+                ['Estado', modalVer.estado || 'Activo'],
+                modalVer.rol !== 'admin'
+                  ? ['Estado Email', modalVer.email_verificado === 1 ? 'Verificado' : 'Pendiente']
+                  : null
               ].filter(Boolean).map(([label, valor]) => (
-                <div
-                  key={label}
-                  className="detalle-row"
-                >
-                  <span className="detalle-label">
-                    {label}:
-                  </span>
-
-                  <span className="detalle-valor">
-                    {valor}
-                  </span>
+                <div key={label} className="detalle-row">
+                  <span className="detalle-label">{label}:</span>
+                  <span className="detalle-valor">{valor}</span>
                 </div>
               ))}
             </div>
           )}
         </UsuarioModal>
 
+        {/* MODAL CONFIRMAR ELIMINAR USUARIO */}
         <UsuarioModal
           isOpen={Boolean(confirmEliminar)}
           title="¿Eliminar usuario?"
-          onClose={() =>
-            setConfirmEliminar(null)
-          }
+          onClose={() => setConfirmEliminar(null)}
           onSave={handleEliminarUsuario}
-          saveText={
-            eliminando
-              ? 'Eliminando...'
-              : 'Sí, eliminar'
-          }
+          saveText={eliminando ? 'Eliminando...' : 'Sí, eliminar'}
           disabled={eliminando}
           isSmall
         >
           {confirmEliminar && (
             <p className="confirm-texto">
-              Vas a eliminar a{' '}
-              <b>
-                {confirmEliminar.nombre}{' '}
-                {confirmEliminar.apellido}
-              </b>.
-              Esta acción no se puede deshacer.
+              Vas a eliminar a <b>{confirmEliminar.nombre} {confirmEliminar.apellido}</b>. Esta acción no se puede deshacer.
+            </p>
+          )}
+        </UsuarioModal>
+
+        {/* MODAL CREAR O EDITAR EJERCICIO (ADMIN) */}
+        {modalCrearEjercicio && (
+          <div className="overlay">
+            <div className="modal">
+              <h2 className="modal-titulo">
+                {ejercicioEditando ? 'Editar Ejercicio del Catálogo' : 'Nuevo Ejercicio en Catálogo'}
+              </h2>
+              <div className="modal-grid">
+                <div className="form-field-group">
+                  <label className="input-label-field">Nombre del Ejercicio *</label>
+                  <input
+                    className="input-modal"
+                    placeholder="Nombre del Ejercicio (ej. Press de Banca)"
+                    value={formEjercicio.nombre}
+                    onChange={(e) => setFormEjercicio({ ...formEjercicio, nombre: e.target.value })}
+                  />
+                </div>
+                <div className="form-field-group">
+                  <label className="input-label-field">Grupo Muscular *</label>
+                  <select
+                    className="input-modal"
+                    value={formEjercicio.grupo_muscular}
+                    onChange={(e) => setFormEjercicio({ ...formEjercicio, grupo_muscular: e.target.value })}
+                  >
+                    {GRUPOS_MUSCULARES.map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-field-group">
+                  <label className="input-label-field">Descripción o Técnica (opcional)</label>
+                  <textarea
+                    className="input-modal"
+                    placeholder="Descripción o técnica de ejecución"
+                    value={formEjercicio.descripcion}
+                    onChange={(e) => setFormEjercicio({ ...formEjercicio, descripcion: e.target.value })}
+                    style={{ minHeight: '70px' }}
+                  />
+                </div>
+                <div className="form-field-group">
+                  <label className="input-label-field">URL GIF Demostrativo (opcional)</label>
+                  <input
+                    className="input-modal"
+                    placeholder="URL del GIF explicativo (https://...)"
+                    value={formEjercicio.gif}
+                    onChange={(e) => setFormEjercicio({ ...formEjercicio, gif: e.target.value })}
+                  />
+                </div>
+                {formEjercicio.gif && (
+                  <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--admin-muted)', display: 'block', marginBottom: '4px' }}>Vista previa del GIF:</span>
+                    <img
+                      src={formEjercicio.gif}
+                      alt="Preview"
+                      style={{ maxHeight: '100px', borderRadius: '8px', objectFit: 'cover' }}
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="modal-btns">
+                <button
+                  type="button"
+                  className="btn-cancelar"
+                  onClick={() => {
+                    setModalCrearEjercicio(false)
+                    setEjercicioEditando(null)
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn-guardar"
+                  onClick={handleGuardarEjercicio}
+                  disabled={guardando}
+                >
+                  {guardando
+                    ? 'Guardando...'
+                    : ejercicioEditando
+                      ? 'Actualizar Ejercicio'
+                      : 'Guardar Ejercicio'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL CONFIRMAR ELIMINAR EJERCICIO */}
+        <UsuarioModal
+          isOpen={Boolean(confirmEliminarEjercicio)}
+          title="¿Eliminar ejercicio del catálogo?"
+          onClose={() => setConfirmEliminarEjercicio(null)}
+          onSave={handleEliminarEjercicio}
+          saveText={eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+          disabled={eliminando}
+          isSmall
+        >
+          {confirmEliminarEjercicio && (
+            <p className="confirm-texto">
+              Vas a eliminar <b>{confirmEliminarEjercicio.nombre}</b> del catálogo oficial.
+            </p>
+          )}
+        </UsuarioModal>
+
+        {/* MODAL CREAR O EDITAR RUTINA PREARMADA (ADMIN) */}
+        {modalCrearRutina && (
+          <div className="overlay">
+            <div className="modal modal-rutina">
+              <h2 className="modal-titulo">
+                {rutinaEditando ? 'Editar Rutina Prearmada' : 'Nueva Rutina Prearmada'}
+              </h2>
+              <div className="modal-grid">
+                <div className="form-field-group">
+                  <label className="input-label-field">Nombre de la Rutina *</label>
+                  <input
+                    className="input-modal"
+                    placeholder="Nombre de la Rutina (ej. Push - Empuje Hipertrofia)"
+                    value={formRutina.nombre}
+                    onChange={(e) => setFormRutina({ ...formRutina, nombre: e.target.value })}
+                  />
+                </div>
+                <div className="form-field-group">
+                  <label className="input-label-field">Descripción (opcional)</label>
+                  <textarea
+                    className="input-modal"
+                    placeholder="Descripción de la rutina"
+                    value={formRutina.descripcion}
+                    onChange={(e) => setFormRutina({ ...formRutina, descripcion: e.target.value })}
+                    style={{ minHeight: '60px' }}
+                  />
+                </div>
+                <div className="form-field-group">
+                  <label className="input-label-field">Día Asignado / Sugerido</label>
+                  <select
+                    className="input-modal"
+                    value={formRutina.dia_asignado}
+                    onChange={(e) => setFormRutina({ ...formRutina, dia_asignado: e.target.value })}
+                  >
+                    <option value="">Día sugerido (opcional)</option>
+                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ borderTop: '1px solid rgba(140, 88, 211, 0.3)', paddingTop: '12px', marginTop: '6px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: 'white', display: 'block', marginBottom: '8px' }}>
+                    Agregar ejercicio desde el catálogo:
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="input-modal"
+                      value={ejercicioSeleccionadoId}
+                      onChange={(e) => setEjercicioSeleccionadoId(e.target.value)}
+                      style={{ flex: 1, marginBottom: 0 }}
+                    >
+                      <option value="">Selecciona un ejercicio...</option>
+                      {ejerciciosList.map(e => (
+                        <option key={e.id_ejercicio} value={e.id_ejercicio}>
+                          {e.nombre} ({e.grupo_muscular || 'Gral'})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn-guardar"
+                      onClick={agregarEjercicioARutinaDraft}
+                      style={{ padding: '0 16px', minHeight: '48px', borderRadius: '9px' }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Lista de ejercicios agregados en el borrador */}
+                {rutinaEjercicios.length > 0 && (
+                  <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--admin-muted)' }}>
+                      Ejercicios configurados ({rutinaEjercicios.length}):
+                    </span>
+                    {rutinaEjercicios.map((ej, index) => (
+                      <div
+                        key={index}
+                        className="rutina-modal-draft-item"
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                            {ej.gif ? (
+                              <img
+                                src={ej.gif}
+                                alt={ej.nombre}
+                                className="rutina-ejercicio-mini-gif"
+                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                              />
+                            ) : (
+                              <div className="rutina-ejercicio-mini-placeholder">💪</div>
+                            )}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <span style={{ color: 'white', fontWeight: '600', fontSize: '13px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {ej.nombre}
+                              </span>
+                              <span style={{ color: '#a0a0a0', fontSize: '11px' }}>{ej.grupo_muscular || 'Gral'}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => quitarEjercicioRutinaDraft(index)}
+                            style={{ background: 'transparent', border: 'none', color: '#ffb2b4', cursor: 'pointer', fontSize: '18px', padding: '0 4px' }}
+                            title="Quitar"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="rutina-draft-metrics-grid">
+                          <div>
+                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Series</label>
+                            <input
+                              type="number"
+                              className="input-modal"
+                              style={{ minHeight: '32px', padding: '4px 8px', marginBottom: 0 }}
+                              value={ej.series}
+                              onChange={(e) => actualizarMetricaRutinaDraft(index, 'series', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Reps</label>
+                            <input
+                              type="number"
+                              className="input-modal"
+                              style={{ minHeight: '32px', padding: '4px 8px', marginBottom: 0 }}
+                              value={ej.repeticiones}
+                              onChange={(e) => actualizarMetricaRutinaDraft(index, 'repeticiones', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Peso (kg)</label>
+                            <input
+                              type="number"
+                              className="input-modal"
+                              style={{ minHeight: '32px', padding: '4px 8px', marginBottom: 0 }}
+                              value={ej.peso}
+                              onChange={(e) => actualizarMetricaRutinaDraft(index, 'peso', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-btns">
+                <button
+                  type="button"
+                  className="btn-cancelar"
+                  onClick={() => {
+                    setModalCrearRutina(false)
+                    setRutinaEditando(null)
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn-guardar"
+                  onClick={handleGuardarRutinaPrearmada}
+                  disabled={guardando}
+                >
+                  {guardando
+                    ? 'Guardando...'
+                    : rutinaEditando
+                      ? 'Actualizar Rutina Prearmada'
+                      : 'Guardar Rutina Prearmada'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL CONFIRMAR ELIMINAR RUTINA PREARMADA */}
+        <UsuarioModal
+          isOpen={Boolean(confirmEliminarRutina)}
+          title="¿Eliminar rutina prearmada?"
+          onClose={() => setConfirmEliminarRutina(null)}
+          onSave={handleEliminarRutina}
+          saveText={eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+          disabled={eliminando}
+          isSmall
+        >
+          {confirmEliminarRutina && (
+            <p className="confirm-texto">
+              Vas a eliminar la rutina <b>{confirmEliminarRutina.nombre}</b>. Los atletas que la hayan guardado como suya no se verán afectados.
             </p>
           )}
         </UsuarioModal>
