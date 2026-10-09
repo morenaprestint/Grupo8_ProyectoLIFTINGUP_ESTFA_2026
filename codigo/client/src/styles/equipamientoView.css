@@ -409,6 +409,65 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ─── Barra de Acciones de Tarjeta (Editar / Eliminar) ─── */
+.equip-card-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+
+.equip-card-btn-edit {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  color: #00d2ff;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.equip-card-btn-edit:hover {
+  background: rgba(0, 210, 255, 0.25);
+  border-color: #00d2ff;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.35);
+}
+
+.equip-card-btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 75, 75, 0.12);
+  border: 1px solid rgba(255, 75, 75, 0.35);
+  color: #ff6b6b;
+  padding: 7px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.equip-card-btn-delete:hover:not(:disabled) {
+  background: rgba(255, 75, 75, 0.28);
+  border-color: #ff4b4b;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(255, 75, 75, 0.35);
+}
+
+.equip-card-btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .equip-item-badge {
   font-size: 11px;
   font-weight: 700;
@@ -450,6 +509,131 @@
   border: 1px dashed rgba(255, 255, 255, 0.15);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAL EDITAR EQUIPAMIENTO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.equip-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(10, 8, 25, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.equip-modal-content {
+  background: #1f1c2d;
+  border: 2px solid #00d2ff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 35px rgba(0, 210, 255, 0.28), 0 20px 50px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  box-sizing: border-box;
+  animation: equipSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes equipSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.equip-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(26, 23, 38, 0.95);
+}
+
+.equip-modal-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.equip-modal-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(0, 210, 255, 0.15);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.equip-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.equip-modal-subtitle {
+  font-size: 12px;
+  color: #b0b0c0;
+  margin: 2px 0 0;
+}
+
+.equip-modal-btn-close {
+  background: transparent;
+  border: none;
+  color: #b0b0c0;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.equip-modal-btn-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.equip-modal-form {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.equip-modal-body {
+  padding: 22px 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+
+.equip-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(24, 21, 35, 0.9);
+}
+
 /* ─── Adaptación Móvil ─── */
 @media (max-width: 767px) {
   .equip-dashboard-container {
@@ -463,4 +647,25 @@
   .equip-actions-row-expanded {
     grid-template-columns: 1fr;
   }
+
+  .equip-modal-content {
+    max-height: 94vh;
+    border-radius: 16px;
+  }
+
+  .equip-modal-header,
+  .equip-modal-body,
+  .equip-modal-footer {
+    padding: 14px 16px;
+  }
+
+  .equip-modal-footer {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .equip-modal-footer button {
+    width: 100%;
+  }
 }
+
