@@ -75,10 +75,38 @@ exports.getRutinaById = async (req, res) => {
 exports.createRutina = async (req, res) => {
     const { nombre, descripcion, id_usuario, es_favorita, dia_asignado, ejercicios, peso } = req.body;
 
-    // Validación: si el peso enviado supera los 2000 kg, retorna 400 antes de ejecutar la consulta SQL
-    const pesoInvalido = (p) => p !== undefined && p !== null && Number(p) > 2000;
-    if (pesoInvalido(peso) || (Array.isArray(ejercicios) && ejercicios.some(e => pesoInvalido(e.peso)))) {
-        return res.status(400).json({ error: 'El peso no puede superar los 2000 kg.' });
+    // Validación: peso <= 2000 y números no negativos (>= 0)
+    const pesoExcede = (p) => p !== undefined && p !== null && Number(p) > 2000;
+    const esNegativo = (val) => val !== undefined && val !== null && Number(val) < 0;
+
+    if (pesoExcede(peso) || (Array.isArray(ejercicios) && ejercicios.some(e => pesoExcede(e.peso)))) {
+        return res.status(400).json({ success: false, error: 'El peso no puede superar los 2000 kg.' });
+    }
+
+    if (esNegativo(peso)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Error: Ingrese un peso válido',
+            error: 'Error: Ingrese un peso válido'
+        });
+    }
+
+    if (Array.isArray(ejercicios)) {
+        for (const e of ejercicios) {
+            if (esNegativo(e.peso) || isNaN(Number(e.peso))) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Error: Ingrese un peso válido',
+                    error: 'Error: Ingrese un peso válido'
+                });
+            }
+            if (esNegativo(e.series) || isNaN(Number(e.series))) {
+                return res.status(400).json({ success: false, message: 'Error: Ingrese un peso válido', error: 'Error: Ingrese un peso válido' });
+            }
+            if (esNegativo(e.repeticiones) || isNaN(Number(e.repeticiones))) {
+                return res.status(400).json({ success: false, message: 'Error: Ingrese un peso válido', error: 'Error: Ingrese un peso válido' });
+            }
+        }
     }
 
     try {
@@ -123,10 +151,38 @@ exports.updateRutina = async (req, res) => {
     const id = req.params.id || req.params.id_rutina;
     const { nombre, descripcion, es_favorita, dia_asignado, ejercicios, peso } = req.body;
 
-    // Validación: si el peso enviado supera los 2000 kg, retorna 400 antes de ejecutar la consulta SQL
-    const pesoInvalido = (p) => p !== undefined && p !== null && Number(p) > 2000;
-    if (pesoInvalido(peso) || (Array.isArray(ejercicios) && ejercicios.some(e => pesoInvalido(e.peso)))) {
-        return res.status(400).json({ error: 'El peso no puede superar los 2000 kg.' });
+    // Validación: peso <= 2000 y números no negativos (>= 0)
+    const pesoExcede = (p) => p !== undefined && p !== null && Number(p) > 2000;
+    const esNegativo = (val) => val !== undefined && val !== null && Number(val) < 0;
+
+    if (pesoExcede(peso) || (Array.isArray(ejercicios) && ejercicios.some(e => pesoExcede(e.peso)))) {
+        return res.status(400).json({ success: false, error: 'El peso no puede superar los 2000 kg.' });
+    }
+
+    if (esNegativo(peso)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Error: Ingrese un peso válido',
+            error: 'Error: Ingrese un peso válido'
+        });
+    }
+
+    if (Array.isArray(ejercicios)) {
+        for (const e of ejercicios) {
+            if (esNegativo(e.peso) || isNaN(Number(e.peso))) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Error: Ingrese un peso válido',
+                    error: 'Error: Ingrese un peso válido'
+                });
+            }
+            if (esNegativo(e.series) || isNaN(Number(e.series))) {
+                return res.status(400).json({ success: false, message: 'Error: Ingrese un peso válido', error: 'Error: Ingrese un peso válido' });
+            }
+            if (esNegativo(e.repeticiones) || isNaN(Number(e.repeticiones))) {
+                return res.status(400).json({ success: false, message: 'Error: Ingrese un peso válido', error: 'Error: Ingrese un peso válido' });
+            }
+        }
     }
 
     try {

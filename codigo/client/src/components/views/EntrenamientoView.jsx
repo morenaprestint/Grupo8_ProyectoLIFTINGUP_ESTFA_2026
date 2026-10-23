@@ -10,10 +10,13 @@ import {
     Flame,
     Trophy,
     ArrowLeft,
-    Zap
+    Zap,
+    X,
+    AlertCircle
 } from 'lucide-react';
 import { getRutinas, createHistorial } from '../../services/api';
 import { getCurrentUser } from '../../features/authService';
+import ModalAlerta from '../ModalAlerta';
 import '../../styles/entrenamientoView.css';
 
 function formatTiempo(segundosTotales) {
@@ -27,6 +30,15 @@ function formatTiempo(segundosTotales) {
     }
     return `${pad(mins)}:${pad(segs)}`;
 }
+
+const formatearGrupoMuscular = (grupo) => {
+    if (!grupo) return 'General';
+    const g = String(grupo).trim();
+    if (['pierna', 'piernas'].includes(g.toLowerCase())) {
+        return 'Pierna / Glúteo';
+    }
+    return g;
+};
 
 function EntrenamientoView() {
     const user = getCurrentUser();
@@ -42,11 +54,25 @@ function EntrenamientoView() {
     // Cronómetro en tiempo real
     const [tiempoSegundos, setTiempoSegundos] = useState(0);
     const [estadoCrono, setEstadoCrono] = useState('detenido'); // 'detenido' | 'corriendo' | 'en-pausa'
+    const [isStarted, setIsStarted] = useState(false);
     const timerRef = useRef(null);
 
-    // Estado para finalizar y guardar
+    // Estado para finalizar, confirmar y guardar
     const [guardando, setGuardando] = useState(false);
+    const [mostrarConfirmacionFin, setMostrarConfirmacionFin] = useState(false); // Popup estilizado de confirmación
     const [resumenModal, setResumenModal] = useState(null); // Datos de resumen al finalizar
+    const [toast, setToast] = useState({ show: false, msg: '', tipo: 'error' });
+
+    // Modal Popup de validación y errores con estilo neón oscuro
+    const [alertaModal, setAlertaModal] = useState({ isOpen: false, titulo: '', mensaje: '', tipo: 'warning' });
+    const mostrarModalError = (mensaje, titulo = 'Acción no permitida', tipo = 'warning') => {
+        setAlertaModal({ isOpen: true, titulo, mensaje, tipo });
+    };
+
+    const mostrarToast = (msg, tipo = 'error') => {
+        setToast({ show: true, msg, tipo });
+        setTimeout(() => setToast({ show: false, msg: '', tipo: 'error' }), 3500);
+    };
 
     // Cargar rutinas del atleta y predefinidas
     useEffect(() => {
@@ -88,7 +114,7 @@ function EntrenamientoView() {
             return;
         }
         setEjerciciosSesion(
-            rutina.ejercicios.map((e, idx) => ({
+            rutina.ejercicios.map((e) => ({
                 id_ejercicio: e.id_ejercicio,
                 nombre: e.nombre,
                 grupo_muscular: e.grupo_muscular,
@@ -124,15 +150,68 @@ function EntrenamientoView() {
         };
     }, [estadoCrono]);
 
-    const handleIniciarCrono = () => setEstadoCrono('corriendo');
+    const handleIniciarCrono = () => {
+        const tieneInvalido = ejerciciosSesion.some(e => {
+            const p = Number(e.peso);
+            const s = Number(e.series);
+            const r = Number(e.repeticiones);
+            return isNaN(p) || p < 0 || p > 350 ||
+                isNaN(s) || s < 1 || s > 5 ||
+                isNaN(r) || r < 1 || r > 15;
+        });
+
+        if (tieneInvalido) {
+            mostrarModalError('Acción no permitida: el valor ingresado es inválido. Verifique los valores permitidos: Series (1-5), Repeticiones (1-15) y Peso (0-350 kg).');
+            return;
+        }
+        setIsStarted(true);
+        setEstadoCrono('corriendo');
+    };
+
     const handlePausarCrono = () => setEstadoCrono('en-pausa');
     const handleReiniciarCrono = () => {
         setEstadoCrono('detenido');
         setTiempoSegundos(0);
+        setIsStarted(false);
     };
 
-    // Actualizar inputs inline de ejercicio
+    // Actualizar inputs inline de ejercicio con validación estricta
     const handleUpdateEjercicioField = (index, field, value) => {
+        if (value === '') {
+            setEjerciciosSesion(prev => {
+                const copia = [...prev];
+                copia[index][field] = '';
+                return copia;
+            });
+            return;
+        }
+
+        const numVal = Number(value);
+
+        if (isNaN(numVal) || numVal < 0) {
+            mostrarModalError('Acción no permitida: el valor ingresado es inválido. Ingrese un valor numérico mayor o igual a 0.');
+            return;
+        }
+
+        if (field === 'series') {
+            if (numVal < 1 || numVal > 5) {
+                mostrarModalError('Acción no permitida: el valor ingresado es inválido. Las series deben estar estrictamente entre 1 y 5.');
+                return;
+            }
+        }
+
+        if (field === 'repeticiones') {
+            if (numVal < 1 || numVal > 15) {
+                mostrarModalError('Acción no permitida: el valor ingresado es inválido. Las repeticiones deben estar estrictamente entre 1 y 15.');
+                return;
+            }
+        }
+
+        if (field === 'peso' && numVal > 350) {
+            mostrarModalError('Acción no permitida: el valor ingresado es inválido. El peso máximo permitido es de 350 kg.');
+            return;
+        }
+
         setEjerciciosSesion(prev => {
             const copia = [...prev];
             copia[index][field] = value;
@@ -160,22 +239,43 @@ function EntrenamientoView() {
             const s = Number(e.series) || 0;
             const r = Number(e.repeticiones) || 0;
             const p = Number(e.peso) || 0;
-            // Volumen levantado: Series * Repeticiones * Peso
-            // Si el peso es > 0, calcula el volumen; si es 0, suma 0
             return acc + (s * r * p);
         }, 0);
     }, [ejerciciosSesion]);
 
-    // Finalizar entrenamiento y persistir en MySQL
-    const handleFinalizarEntrenamiento = async () => {
-        if (tiempoSegundos < 5 && kilosTotales === 0 && pesoMaximo === 0) {
-            if (!window.confirm('El entrenamiento tiene poca actividad registrada. ¿Deseas finalizarlo de todas formas?')) {
-                return;
-            }
+    // Validar antes de abrir el popup de confirmación
+    const solicitarFinalizacion = () => {
+        // Evaluar si la sesión está iniciada/activa
+        const sesionIniciada = isStarted || estadoCrono === 'corriendo' || estadoCrono === 'en-pausa' || tiempoSegundos > 0;
+
+        if (!sesionIniciada) {
+            mostrarModalError('Tenés que haber arrancado el entrenamiento para finalizar', 'Atención');
+            return;
         }
 
-        // Pausar cronómetro
+        const tieneInvalido = ejerciciosSesion.some(e => {
+            const p = Number(e.peso);
+            const s = Number(e.series);
+            const r = Number(e.repeticiones);
+            return isNaN(p) || p < 0 || p > 350 ||
+                isNaN(s) || s < 1 || s > 5 ||
+                isNaN(r) || r < 1 || r > 15;
+        });
+
+        if (tieneInvalido || pesoMaximo < 0 || kilosTotales < 0) {
+            mostrarModalError('Acción no permitida: el valor ingresado es inválido. Verifique que los valores cumplan: Series (1-5), Repeticiones (1-15) y Peso (0-350 kg) antes de finalizar.');
+            return;
+        }
+
+        // Abre nuestro popup estilizado propio en lugar del alert del navegador
+        setMostrarConfirmacionFin(true);
+    };
+
+    // Ejecutar la persistencia real tras confirmar en el popup
+    const confirmarFinalizarEntrenamiento = async () => {
+        setMostrarConfirmacionFin(false);
         setEstadoCrono('detenido');
+        setIsStarted(false);
         setGuardando(true);
 
         try {
@@ -198,11 +298,11 @@ function EntrenamientoView() {
                     kilos_totales: kilosTotales
                 });
             } else {
-                alert('No se pudo guardar la sesión de entrenamiento');
+                mostrarModalError(res?.message || 'No se pudo guardar la sesión de entrenamiento');
             }
         } catch (err) {
             console.error('Error al guardar sesión:', err);
-            alert('Error al registrar la sesión en la base de datos');
+            mostrarModalError(err?.message || 'Error al conectar con el servidor para guardar la sesión');
         } finally {
             setGuardando(false);
         }
@@ -210,7 +310,27 @@ function EntrenamientoView() {
 
     return (
         <div className="entrenamiento-container">
-            {/* Cabecera */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    top: '24px',
+                    right: '24px',
+                    zIndex: 99999,
+                    background: '#e74c3c',
+                    color: '#ffffff',
+                    padding: '14px 22px',
+                    borderRadius: '10px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    fontWeight: '700',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    ⚠️ {toast.msg}
+                </div>
+            )}
+
             <div className="entrenamiento-header">
                 <h1 className="entrenamiento-title">
                     <Zap size={22} color="var(--entr-cyan)" />
@@ -221,7 +341,6 @@ function EntrenamientoView() {
                 </p>
             </div>
 
-            {/* 1. Selector de Rutina */}
             <div className="entrenamiento-rutina-selector-card">
                 <label className="entrenamiento-label">
                     <Dumbbell size={14} />
@@ -241,7 +360,6 @@ function EntrenamientoView() {
                 </select>
             </div>
 
-            {/* 2. Cronómetro Digital */}
             <div className="entrenamiento-cronometro-card">
                 <span className={`cronometro-status-badge ${estadoCrono}`}>
                     <span className="cronometro-dot" />
@@ -286,7 +404,6 @@ function EntrenamientoView() {
                 </div>
             </div>
 
-            {/* 3. Lista de Ejercicios con Inputs Inline */}
             <div className="entrenamiento-ejercicios-section">
                 <div className="entrenamiento-section-title">
                     <span>Ejercicios de la Rutina ({ejerciciosSesion.length})</span>
@@ -311,20 +428,20 @@ function EntrenamientoView() {
                                 </div>
                                 <div className="entrenamiento-ejercicio-info">
                                     <span className="entrenamiento-ejercicio-nombre">{ej.nombre}</span>
-                                    <span className="entrenamiento-ejercicio-grupo">{ej.grupo_muscular || 'General'}</span>
+                                    <span className="entrenamiento-ejercicio-grupo">{formatearGrupoMuscular(ej.grupo_muscular)}</span>
                                 </div>
                             </div>
 
-                            {/* Inputs Inline: Series, Reps, Kilos */}
                             <div className="entrenamiento-inputs-inline">
                                 <div className="entrenamiento-input-box">
                                     <label>Series</label>
                                     <input
                                         type="number"
                                         min="1"
-                                        max="99"
+                                        max="5"
                                         className="entrenamiento-input-num"
                                         value={ej.series}
+                                        onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                                         onChange={e => handleUpdateEjercicioField(index, 'series', e.target.value)}
                                     />
                                 </div>
@@ -333,9 +450,10 @@ function EntrenamientoView() {
                                     <input
                                         type="number"
                                         min="1"
-                                        max="999"
+                                        max="15"
                                         className="entrenamiento-input-num"
                                         value={ej.repeticiones}
+                                        onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                                         onChange={e => handleUpdateEjercicioField(index, 'repeticiones', e.target.value)}
                                     />
                                 </div>
@@ -344,9 +462,11 @@ function EntrenamientoView() {
                                     <input
                                         type="number"
                                         min="0"
+                                        max="350"
                                         step="0.5"
                                         className="entrenamiento-input-num"
                                         value={ej.peso}
+                                        onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                                         onChange={e => handleUpdateEjercicioField(index, 'peso', e.target.value)}
                                     />
                                 </div>
@@ -369,7 +489,6 @@ function EntrenamientoView() {
                 )}
             </div>
 
-            {/* 4. Resumen de Métricas en Vivo */}
             <div className="entrenamiento-live-metrics-bar">
                 <div className="live-metric-item">
                     <span className="live-metric-label">Tiempo</span>
@@ -385,16 +504,53 @@ function EntrenamientoView() {
                 </div>
             </div>
 
-            {/* 5. Botón Finalizar Entrenamiento */}
             <button
                 type="button"
                 className="btn-finalizar-entrenamiento"
-                onClick={handleFinalizarEntrenamiento}
+                onClick={solicitarFinalizacion}
                 disabled={guardando}
             >
                 <Check size={18} />
                 {guardando ? 'Guardando sesión en MySQL...' : 'Finalizar Entrenamiento'}
             </button>
+
+            {/* POPUP ESTILIZADO DE CONFIRMACIÓN (Reutilizando el diseño de modales de la app) */}
+            {mostrarConfirmacionFin && (
+                <div className="entrenamiento-modal-overlay">
+                    <div className="entrenamiento-modal-content" style={{ textAlign: 'center', padding: '30px 20px' }}>
+                        <div className="modal-trophy-icon" style={{ background: 'rgba(0, 210, 255, 0.1)', color: 'var(--entr-cyan)' }}>
+                            <AlertCircle size={32} />
+                        </div>
+
+                        <h2 style={{ margin: '12px 0 6px 0', fontSize: '18px', color: '#ffffff' }}>
+                            ¿Finalizar Entrenamiento?
+                        </h2>
+                        <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--entr-text-muted)', lineHeight: '1.4' }}>
+                            Estás a punto de concluir tu sesión actual y guardar los registros en tu historial. ¿Deseas continuar?
+                        </p>
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                                type="button"
+                                className="btn-crono btn-crono-reset"
+                                style={{ flex: 1, height: '42px', borderRadius: '8px', justifyContent: 'center' }}
+                                onClick={() => setMostrarConfirmacionFin(false)}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-finalizar-entrenamiento"
+                                style={{ flex: 1, margin: 0, height: '42px', borderRadius: '8px' }}
+                                onClick={confirmarFinalizarEntrenamiento}
+                            >
+                                <Check size={16} />
+                                Sí, Finalizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal de Felicitación / Resumen al Finalizar */}
             {resumenModal && (
@@ -454,6 +610,15 @@ function EntrenamientoView() {
                     </div>
                 </div>
             )}
+
+            {/* Modal Popup para validaciones preventivas */}
+            <ModalAlerta
+                isOpen={alertaModal.isOpen}
+                titulo={alertaModal.titulo}
+                mensaje={alertaModal.mensaje}
+                tipo={alertaModal.tipo || 'warning'}
+                onClose={() => setAlertaModal({ isOpen: false, titulo: '', mensaje: '', tipo: 'warning' })}
+            />
         </div>
     );
 }

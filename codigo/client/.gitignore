@@ -1,6 +1,57 @@
+# Dependencias
 node_modules/
+
+# Archivos de compilación Web (Vite)
 dist/
+dist-ssr/
 build/
+*.local
+
+# Variables de entorno
 .env
-.env.local
+.env.*
+!.env.example
+
+# Archivos generados por Capacitor / Android
+android/app/build/
+android/.gradle/
+android/captures/
+android/app/src/main/assets/public/
+
+# Logs y depuración
 *.log
+npm-debug.log*
+
+# Archivos del sistema y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/# Dependencias
+node_modules/
+
+# Archivos de compilación Web (Vite)
+dist/
+dist-ssr/
+build/
+*.local
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Archivos generados por Capacitor / Android
+android/app/build/
+android/.gradle/
+android/captures/
+android/app/src/main/assets/public/
+
+# Logs y depuración
+*.log
+npm-debug.log*
+
+# Archivos del sistema y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

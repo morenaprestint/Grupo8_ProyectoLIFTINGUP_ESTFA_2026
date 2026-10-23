@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AtletaNavbar from '../components/AtletaNavbar';
 import { getCurrentUser, logout } from '../features/authService';
-import { getAsistencias, createAsistencia } from '../services/api';
-import { useCalendarGrid } from '../hooks/useCalendarGrid';
+import { getAsistencias, createAsistencia, deleteAsistencia } from '../services/api';
+import { useCalendarGrid, parseLocalDate } from '../hooks/useCalendarGrid';
 import '../styles/attendance.css';
 
 const Attendance = () => {
@@ -12,6 +12,7 @@ const Attendance = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [asistencias, setAsistencias] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const {
     monthTitle,
@@ -19,13 +20,15 @@ const Attendance = () => {
     paddingDays,
     todayStr,
     getWeeklyDays,
-    verificarAsistencia,
     irMesAnterior,
-    irMesSiguiente
+    irMesSiguiente,
+    canPrevMonth,
+    canNextMonth
   } = useCalendarGrid({ startOnMonday: true });
 
   const cargarAsistencias = useCallback(async () => {
     if (!user) return;
+    setLoading(true);
     try {
       const res = await getAsistencias(user.id);
       if (res?.success && Array.isArray(res.data)) {
@@ -33,6 +36,8 @@ const Attendance = () => {
       }
     } catch (error) {
       console.error('Error al cargar asistencias:', error);
+    } finally {
+      setLoading(false);
     }
   }, [user?.id]);
 
@@ -40,7 +45,19 @@ const Attendance = () => {
     cargarAsistencias();
   }, [cargarAsistencias]);
 
-  const attendanceMarkedToday = verificarAsistencia(todayStr, asistencias);
+  // ─── VERIFICACIÓN ROBUSTA DE ASISTENCIAS (Solución a desfases) ───
+  const asistenciasFechasSet = new Set(
+    asistencias.map(a => {
+      const rawFecha = a.fecha || a.fecha_formateada || '';
+      return String(rawFecha).slice(0, 10);
+    })
+  );
+
+  const verificarAsistenciaLocal = (dateStr) => {
+    return asistenciasFechasSet.has(dateStr);
+  };
+
+  const attendanceMarkedToday = verificarAsistenciaLocal(todayStr);
 
   const handleAttendance = async (didAttend, dateStr = todayStr) => {
     if (!didAttend) {
@@ -54,10 +71,47 @@ const Attendance = () => {
       if (res?.success) {
         setShowConfirm(false);
         setSelectedDay(null);
+        const nuevaAsistencia = res.data || {
+          id_asistencia: Date.now(),
+          id_usuario: user?.id,
+          fecha: dateStr,
+          fecha_formateada: dateStr
+        };
+        setAsistencias(prev => [nuevaAsistencia, ...prev]);
         cargarAsistencias();
       }
     } catch (error) {
       console.error('Error al registrar asistencia:', error);
+    }
+  };
+
+  const handleRemoveAttendance = async (dateStr) => {
+    if (!user) return;
+    const prevAsistencias = [...asistencias];
+    const registro = asistencias.find(a => {
+      const rawFecha = a.fecha || a.fecha_formateada || '';
+      return String(rawFecha).slice(0, 10) === dateStr;
+    });
+
+    setAsistencias(prev => prev.filter(a => {
+      const rawFecha = a.fecha || a.fecha_formateada || '';
+      return String(rawFecha).slice(0, 10) !== dateStr;
+    }));
+
+    try {
+      const res = await deleteAsistencia({
+        id_asistencia: registro?.id_asistencia,
+        id_usuario: user?.id,
+        fecha: dateStr
+      });
+      if (res?.success) {
+        cargarAsistencias();
+      } else {
+        throw new Error(res?.message || 'Error al eliminar la asistencia');
+      }
+    } catch (error) {
+      console.error('Error al desmarcar asistencia:', error);
+      setAsistencias(prevAsistencias);
     }
   };
 
@@ -67,7 +121,8 @@ const Attendance = () => {
   };
 
   const weeklyData = getWeeklyDays(asistencias);
-  const attendedDaysCount = days.filter(d => verificarAsistencia(d.dateStr, asistencias)).length;
+  const attendedDaysCount = days.filter(d => verificarAsistenciaLocal(d.dateStr)).length;
+  const attendedWeeklyCount = weeklyData.filter(d => verificarAsistenciaLocal(d.dateStr)).length;
 
   return (
     <div className="attendance-page">
@@ -85,66 +140,92 @@ const Attendance = () => {
               <h2 className="card-title">REGISTRO SEMANAL</h2>
 
               <div className="weekly-days">
-                {weeklyData.map((item, index) => (
-                  <div key={index} className="day-col">
-                    <span className="day-name">{item.dayName}</span>
-                    <div className="status-icon">
-                      {item.status === 'yes' ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#8C58D3" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      ) : item.status === 'no' ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted, #7f7f7f)' }}>•</span>
-                      )}
+                {weeklyData.map((item, index) => {
+                  const hasAttendedWeek = verificarAsistenciaLocal(item.dateStr);
+                  return (
+                    <div key={index} className="day-col">
+                      <span className="day-name">{item.dayName}</span>
+                      <div className="status-icon">
+                        {hasAttendedWeek ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="#8C58D3" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        ) : item.dateStr < todayStr ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted, #7f7f7f)' }}>•</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <p className="weekly-subtext">Asistencia Semanal: {weeklyData.filter(d => d.status === 'yes').length} días</p>
+              <p className="weekly-subtext">Asistencia Semanal: <b style={{ color: '#00d2ff' }}>{attendedWeeklyCount}</b> de 7 días</p>
 
-              {/* Action Button or Confirmation Modal */}
-              {!showConfirm ? (
-                <button
-                  type="button"
-                  className="btn-mark-attendance"
-                  onClick={() => {
+              {/* Action Button */}
+              <button
+                type="button"
+                className="btn-mark-attendance"
+                onClick={() => {
+                  if (attendanceMarkedToday) {
+                    handleRemoveAttendance(todayStr);
+                  } else {
                     setSelectedDay(null);
                     setShowConfirm(true);
-                  }}
-                  disabled={attendanceMarkedToday}
-                >
-                  {attendanceMarkedToday ? "ASISTENCIA MARCADA HOY" : "MARCAR ASISTENCIA HOY"}
-                </button>
-              ) : (
-                <div className="confirmation-box">
-                  <h3>{selectedDay ? `¿Asististe el ${selectedDay.dayName} ${selectedDay.day}?` : '¿Asististe hoy?'}</h3>
-                  <div className="confirm-buttons">
-                    <button type="button" className="btn-confirm yes" onClick={() => handleAttendance(true, selectedDay?.dateStr || todayStr)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      Sí, asistí
-                    </button>
-                    <button type="button" className="btn-confirm no" onClick={() => handleAttendance(false)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                      No, cancelar
-                    </button>
-                  </div>
-                  <p className="help-text">Confirma tu asistencia para registrarla en el sistema.</p>
-                </div>
-              )}
+                  }
+                }}
+                style={{
+                  background: attendanceMarkedToday ? 'rgba(231, 76, 60, 0.15)' : 'var(--admin-violet, #8C58D3)',
+                  border: attendanceMarkedToday ? '1px solid #E74C3C' : 'none',
+                  color: attendanceMarkedToday ? '#E74C3C' : 'white',
+                  cursor: 'pointer',
+                  opacity: 1
+                }}
+              >
+                {attendanceMarkedToday ? "DESMARCAR ASISTENCIA HOY ✕" : "MARCAR ASISTENCIA HOY"}
+              </button>
             </section>
 
             {/* Monthly Section */}
             <section className="attendance-card monthly-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <button type="button" onClick={irMesAnterior} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer' }}>❮</button>
+                <button
+                  type="button"
+                  onClick={irMesAnterior}
+                  disabled={!canPrevMonth}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: canPrevMonth ? 'white' : '#555',
+                    fontSize: '18px',
+                    cursor: canPrevMonth ? 'pointer' : 'not-allowed',
+                    opacity: canPrevMonth ? 1 : 0.3
+                  }}
+                  title={canPrevMonth ? "Mes anterior" : "Límite: Enero 2025"}
+                >
+                  ❮
+                </button>
                 <h2 className="card-title" style={{ margin: 0 }}>{monthTitle}</h2>
-                <button type="button" onClick={irMesSiguiente} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer' }}>❯</button>
+                <button
+                  type="button"
+                  onClick={irMesSiguiente}
+                  disabled={!canNextMonth}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: canNextMonth ? 'white' : '#555',
+                    fontSize: '18px',
+                    cursor: canNextMonth ? 'pointer' : 'not-allowed',
+                    opacity: canNextMonth ? 1 : 0.3
+                  }}
+                  title={canNextMonth ? "Mes siguiente" : "Límite: Diciembre 2027"}
+                >
+                  ❯
+                </button>
               </div>
 
               <div className="monthly-stats">
                 <span>Mes actual</span>
-                <span>Días asistidos: {attendedDaysCount}</span>
+                <span>Días asistidos: <b style={{ color: '#00d2ff' }}>{attendedDaysCount}</b></span>
               </div>
 
               <div className="monthly-grid">
@@ -152,23 +233,62 @@ const Attendance = () => {
                   <div key={`pad-${i}`} style={{ width: '26px', height: '26px' }} />
                 ))}
                 {days.map((dayObj) => {
-                  const hasAttended = verificarAsistencia(dayObj.dateStr, asistencias);
+                  const hasAttended = verificarAsistenciaLocal(dayObj.dateStr);
                   return (
                     <div
                       key={dayObj.dateStr}
                       className={`grid-day ${hasAttended ? 'yes' : (dayObj.dateStr > todayStr ? 'pending' : 'no')}`}
                       onClick={() => {
-                        if (dayObj.dateStr <= todayStr && !hasAttended) {
-                          setSelectedDay(dayObj);
-                          setShowConfirm(true);
+                        if (dayObj.dateStr <= todayStr) {
+                          if (!hasAttended) {
+                            setSelectedDay(dayObj);
+                            setShowConfirm(true);
+                          } else {
+                            handleRemoveAttendance(dayObj.dateStr);
+                          }
                         }
                       }}
-                      title={`${dayObj.dayName} ${dayObj.day}`}
+                      style={{
+                        cursor: dayObj.dateStr <= todayStr ? 'pointer' : 'default'
+                      }}
+                      title={`${dayObj.dayName} ${dayObj.day}${hasAttended ? ' (Asistencia registrada - Haz clic para desmarcar)' : ''}`}
                     />
                   );
                 })}
               </div>
             </section>
+
+            {/* MODAL DE CONFIRMACIÓN */}
+            {showConfirm && (
+              <div className="overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                <div className="confirmation-box modal" style={{ background: 'var(--admin-card-soft, #1e1e2f)', padding: '25px', borderRadius: '14px', width: '90%', maxWidth: '400px', textAlign: 'center', border: '1px solid rgba(140,88,211,0.5)' }}>
+                  <h3 style={{ color: 'white', marginBottom: '15px' }}>
+                    {selectedDay ? `¿Asististe el ${selectedDay.dayName} ${selectedDay.day}?` : '¿Asististe al gimnasio hoy?'}
+                  </h3>
+                  <p style={{ color: 'var(--admin-muted, #aaa)', fontSize: '12px', marginBottom: '20px' }}>
+                    {selectedDay ? `Fecha seleccionada: ${selectedDay.dateStr}` : `Fecha actual: ${todayStr}`}
+                  </p>
+                  <div className="confirm-buttons" style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      className="btn-confirm yes"
+                      onClick={() => handleAttendance(true, selectedDay?.dateStr || todayStr)}
+                      style={{ flex: 1, background: 'rgba(46,204,113,0.2)', border: '1px solid #2ECC71', color: '#2ECC71', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      Sí, asistí
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-confirm no"
+                      onClick={() => handleAttendance(false)}
+                      style={{ flex: 1, background: 'rgba(231,76,60,0.2)', border: '1px solid #E74C3C', color: '#E74C3C', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      No, cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Spacer to allow scrolling above navbar on mobile */}
             <div className="navbar-spacer-mobile"></div>

@@ -48,7 +48,12 @@ function AtletaNavbar({ onLogout, moduloPendiente }) {
           <button
             key={item.name}
             type="button"
-            className={`sidebar-item ${location.pathname === item.path ? 'activo' : ''}`}
+            className={`sidebar-item ${
+              location.pathname === item.path ||
+              (item.path === '/home' && (location.pathname === '/' || location.pathname === '/atleta-home'))
+                ? 'activo'
+                : ''
+            }`}
             onClick={() => handleNavClick(item)}
             title={item.name}
             aria-label={item.name}

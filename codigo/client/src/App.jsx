@@ -34,33 +34,29 @@ const RequireAuth = ({ children, allowedRoles }) => {
     return <Navigate to="/" replace />
   }
 
-  if (!allowedRoles.includes(user.rol)) {
-    return (
-      <Navigate
-        to={user.rol === 'admin' ? '/dashboard' : '/home'}
-        replace
-      />
-    )
-  }
-
-  // Si es atleta y el email no está verificado,
-  // obligarlo a ir a la pantalla de verificación.
+  // Bloqueo estricto: Si el email NO está verificado, obligar a ir a /verify-email (para cualquier rol)
   if (
-    user.rol === 'atleta' &&
     Number(user.email_verificado) === 0 &&
     location.pathname !== '/verify-email'
   ) {
     return <Navigate to="/verify-email" replace />
   }
 
-  // Si el atleta ya verificó su email,
-  // no permitirle volver a la pantalla de verificación.
+  // Si el usuario ya verificó su email, no permitirle volver a /verify-email
   if (
-    user.rol === 'atleta' &&
     Number(user.email_verificado) === 1 &&
     location.pathname === '/verify-email'
   ) {
-    return <Navigate to="/home" replace />
+    return <Navigate to={user.rol === 'admin' ? '/admin-dashboard' : '/atleta-home'} replace />
+  }
+
+  if (!allowedRoles.includes(user.rol)) {
+    return (
+      <Navigate
+        to={user.rol === 'admin' ? '/admin-dashboard' : '/atleta-home'}
+        replace
+      />
+    )
   }
 
   return children
@@ -135,7 +131,7 @@ function App() {
         <Route
           path="/verify-email"
           element={
-            <RequireAuth allowedRoles={['atleta']}>
+            <RequireAuth allowedRoles={['atleta', 'admin']}>
               <VerifyEmail />
             </RequireAuth>
           }
@@ -151,7 +147,25 @@ function App() {
         />
 
         <Route
+          path="/atleta-home"
+          element={
+            <RequireAuth allowedRoles={['atleta']}>
+              <Home />
+            </RequireAuth>
+          }
+        />
+
+        <Route
           path="/dashboard"
+          element={
+            <RequireAuth allowedRoles={['admin']}>
+              <Dashboard />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/admin-dashboard"
           element={
             <RequireAuth allowedRoles={['admin']}>
               <Dashboard />

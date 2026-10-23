@@ -1,33 +1,46 @@
 const cleanUrl = (rawUrl) => {
   if (!rawUrl) return 'https://lifting-up-backend.onrender.com/api';
-  // Elimina corchetes, comillas y espacios accidentales
-  let cleaned = rawUrl.replace(/[\[\]"']/g, '').trim();
-  // Si contiene paréntesis de un link markdown [texto](url), extrae solo la URL
-  if (cleaned.includes('(') && cleaned.includes(')')) {
-    const match = cleaned.match(/\(([^)]+)\)/);
-    if (match) cleaned = match[1];
+  let cleaned = String(rawUrl).trim();
+  // Si contiene formato markdown [texto](url), extraer la URL dentro de los paréntesis
+  const markdownMatch = cleaned.match(/\((https?:\/\/[^\s\)]+)\)/);
+  if (markdownMatch) {
+    cleaned = markdownMatch[1];
   }
-  return cleaned.replace(/\/$/, ''); // Quita la barra final si la tiene
+  // Elimina corchetes, comillas, backticks y espacios accidentales
+  return cleaned.replace(/[\[\]"'`]/g, '').trim().replace(/\/+$/, '');
 };
 const API_URL = cleanUrl(import.meta.env.VITE_API_URL);
 console.log("API_URL configurada actualmente:", API_URL);
 
 export const login = async (email, password) => {
   try {
+    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const cleanPassword = typeof password === 'string' ? password.trim() : '';
+
     const response = await fetch(`${API_URL}/usuarios/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
     });
+
+    const result = await response.json().catch(() => null);
+
+    if (response.status === 403 && result?.email_no_verificado) {
+      const { password: _password, ...userWithoutPassword } = result.data || {};
+      return {
+        ...userWithoutPassword,
+        email_no_verificado: true,
+        email_verificado: 0
+      };
+    }
 
     if (!response.ok) {
       return null;
     }
 
-    const result = await response.json();
-    if (result.success && result.data) {
+    if (result?.success && result?.data) {
       const { password: _password, ...userWithoutPassword } = result.data;
       return userWithoutPassword;
     }

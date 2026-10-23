@@ -827,6 +827,7 @@
     opacity: 0;
     transform: translate(-50%, 15px);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, 0);
@@ -933,5 +934,116 @@
   .rutina-catalogo-grid {
     grid-template-columns: 1fr;
     max-height: 240px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   MEJORA DE DISPOSICIÓN: CUADRANTES DEL BORRADOR DE EJERCICIOS
+   ───────────────────────────────────────────────────────── */
+.rutina-draft-item-card {
+  background: var(--rut-bg-card-inner);
+  border: 1px solid rgba(138, 43, 226, 0.35);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rutina-draft-item-card:hover {
+  border-color: var(--rut-cyan);
+  box-shadow: 0 4px 16px rgba(0, 210, 255, 0.15);
+}
+
+.rutina-draft-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rutina-draft-inline-metrics {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rutina-inline-metric-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.rutina-inline-metric-label {
+  font-size: 10.5px;
+  color: var(--rut-cyan);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.rutina-inline-metric-input {
+  width: 62px;
+  background: rgba(12, 9, 25, 0.95);
+  border: 1px solid rgba(138, 43, 226, 0.5);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+  padding: 7px 4px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.rutina-inline-metric-input:focus {
+  border-color: var(--rut-cyan);
+  box-shadow: 0 0 8px var(--rut-cyan-glow);
+}
+
+.rutina-draft-delete-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 71, 87, 0.12);
+  border: 1px solid rgba(255, 71, 87, 0.35);
+  color: var(--rut-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.rutina-draft-delete-btn:hover {
+  background: rgba(255, 71, 87, 0.25);
+  border-color: var(--rut-danger);
+  transform: translateY(-1px);
+}
+
+/* Ajuste responsive para móviles pequeños */
+@media (max-width: 680px) {
+  .rutina-draft-item-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .rutina-draft-inline-metrics {
+    justify-content: space-between;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(138, 43, 226, 0.25);
+  }
+
+  .rutina-inline-metric-input {
+    width: 100%;
+    min-width: 55px;
   }
 }

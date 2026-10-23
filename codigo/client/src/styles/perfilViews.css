@@ -546,3 +546,60 @@
     transform: translate(-50%, 0);
   }
 }
+
+/* ─── Avatar Interactivo con Subida de Foto ─── */
+.perfil-avatar-glow-ring {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.perfil-avatar-glow-ring:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 32px rgba(0, 210, 255, 0.6), 0 0 45px rgba(138, 35, 135, 0.5);
+}
+
+.perfil-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.perfil-avatar-camera-badge {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  background: linear-gradient(135deg, #00d2ff, #8a2387);
+  color: #ffffff;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #181623;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.perfil-avatar-glow-ring:hover .perfil-avatar-camera-badge {
+  transform: scale(1.15);
+}
+
+.perfil-btn-cambiar-email {
+  margin-left: 10px;
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.4);
+  color: #00d2ff;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.perfil-btn-cambiar-email:hover {
+  background: #00d2ff;
+  color: #090714;
+}

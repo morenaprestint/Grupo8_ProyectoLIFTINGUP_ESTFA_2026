@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, saveUser, logout } from '../features/authService';
+import ModalAlerta from '../components/ModalAlerta';
 import '../styles/verifyEmail.css';
 
 const cleanUrl = (rawUrl) => {
   if (!rawUrl) return 'https://lifting-up-backend.onrender.com/api';
-  // Elimina corchetes, comillas y espacios accidentales
-  let cleaned = rawUrl.replace(/[\[\]"']/g, '').trim();
-  // Si contiene paréntesis de un link markdown [texto](url), extrae solo la URL
-  if (cleaned.includes('(') && cleaned.includes(')')) {
-    const match = cleaned.match(/\(([^)]+)\)/);
-    if (match) cleaned = match[1];
+  let cleaned = String(rawUrl).trim();
+  // Si contiene formato markdown [texto](url), extraer la URL dentro de los paréntesis
+  const markdownMatch = cleaned.match(/\((https?:\/\/[^\s\)]+)\)/);
+  if (markdownMatch) {
+    cleaned = markdownMatch[1];
   }
-  return cleaned.replace(/\/$/, ''); // Quita la barra final si la tiene
+  // Elimina corchetes, comillas, backticks y espacios accidentales
+  return cleaned.replace(/[\[\]"'`]/g, '').trim().replace(/\/+$/, '');
 };
 const API_URL = cleanUrl(import.meta.env.VITE_API_URL);
 console.log("API_URL configurada actualmente:", API_URL);
@@ -25,6 +26,12 @@ function VerifyEmail() {
   const [reenviando, setReenviando] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
+  // Modal Popup para validaciones y avisos de expiración
+  const [alertaModal, setAlertaModal] = useState({ isOpen: false, titulo: '', mensaje: '' });
+  const mostrarModalError = (mensaje, titulo = 'Acción no permitida') => {
+    setAlertaModal({ isOpen: true, titulo, mensaje });
+  };
+
   const navigate = useNavigate();
 
   const handleVolver = () => {
@@ -32,12 +39,13 @@ function VerifyEmail() {
     navigate('/');
   };
   const user = getCurrentUser();
+  const targetEmail = user?.email_pendiente || user?.email;
 
   useEffect(() => {
-    if (!user || !user.email) {
+    if (!user || !targetEmail) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, targetEmail, navigate]);
 
   useEffect(() => {
     let timer;
@@ -51,7 +59,9 @@ function VerifyEmail() {
 
   const handleVerificar = async () => {
     if (codigo.length !== 6) {
-      setError('El código debe tener 6 dígitos.');
+      const msg = 'El código debe tener 6 dígitos.';
+      setError(msg);
+      mostrarModalError('Acción no permitida: el código de verificación debe contener exactamente 6 dígitos numéricos.');
       return;
     }
 
@@ -60,29 +70,42 @@ function VerifyEmail() {
     setSuccessMsg('');
 
     try {
-      console.log("Enviando email a verificar:", user?.email);
+      console.log("Enviando email a verificar:", targetEmail);
       const response = await fetch(`${API_URL}/usuarios/verificar-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, codigo })
+        body: JSON.stringify({ email: targetEmail, codigo })
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // Actualizar usuario en localStorage con email_verificado = 1 y activo = 1
+        // Actualizar usuario en localStorage: si se verificó un email pendiente, consolidarlo
+        const emailDefinitivo = data.nuevoEmail || user.email_pendiente || user.email;
         const updatedUser = {
           ...user,
+          email: emailDefinitivo,
+          email_pendiente: null,
           email_verificado: 1,
           activo: 1
         };
         saveUser(updatedUser);
-        navigate('/home');
+        navigate(updatedUser.rol === 'admin' ? '/admin-dashboard' : '/atleta-home');
       } else {
-        setError(data.message || 'Error al verificar el código.');
+        const msg = data.message || 'Error al verificar el código.';
+        setError(msg);
+        const esExpirado = msg.toLowerCase().includes('venc') || msg.toLowerCase().includes('expir');
+        mostrarModalError(
+          esExpirado
+            ? 'El código de verificación ha vencido. Debes solicitar uno nuevo mediante el botón "Reenviar".'
+            : msg,
+          esExpirado ? 'Código vencido' : 'Acción no permitida'
+        );
       }
     } catch (err) {
-      setError('Error de red. Intenta nuevamente.');
+      const netErr = 'Error de red. Intenta nuevamente.';
+      setError(netErr);
+      mostrarModalError(netErr, 'Error de conexión');
     } finally {
       setCargando(false);
     }
@@ -94,11 +117,11 @@ function VerifyEmail() {
     setSuccessMsg('');
 
     try {
-      console.log("Enviando email a verificar:", user?.email);
+      console.log("Reenviando código a:", targetEmail);
       const response = await fetch(`${API_URL}/usuarios/reenviar-codigo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email })
+        body: JSON.stringify({ email: targetEmail })
       });
 
       const data = await response.json();
@@ -147,8 +170,9 @@ function VerifyEmail() {
           <img src="/logo2.png" alt="Email" className="email-icon-large" />
 
           <p className="verify-instructions">
-            Por favor, revisa tu bandeja de<br />
-            entrada para verificar tu cuenta
+            Por favor, revisa la bandeja de entrada de<br />
+            <strong style={{ color: '#00d2ff', wordBreak: 'break-all' }}>{targetEmail}</strong><br />
+            para ingresar el código de 6 dígitos.
           </p>
 
           {error && <div className="error-message">{error}</div>}
@@ -183,6 +207,13 @@ function VerifyEmail() {
           </button>
         </div>
       </div>
+
+      <ModalAlerta
+        isOpen={alertaModal.isOpen}
+        titulo={alertaModal.titulo}
+        mensaje={alertaModal.mensaje}
+        onClose={() => setAlertaModal({ isOpen: false, titulo: '', mensaje: '' })}
+      />
     </div>
   );
 }

@@ -10,14 +10,7 @@
   font-family: 'Inter', sans-serif;
 }
 
-/* Layout overrides to ensure we respect admin-layout if it's there */
-.admin-layout {
-  display: flex;
-  height: 100vh;
-  width: 100%;
-  overflow: hidden;
-}
-
+/* Desktop sidebar wrapper helper */
 .desktop-sidebar-wrapper {
   display: none; /* hidden on mobile */
 }

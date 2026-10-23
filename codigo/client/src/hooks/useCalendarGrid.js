@@ -38,38 +38,62 @@ export const getTodayLocalDateStr = () => {
     return formatLocalDate(hoy.getFullYear(), hoy.getMonth() + 1, hoy.getDate());
 };
 
+export const MIN_CALENDAR_YEAR = 2025;
+export const MAX_CALENDAR_YEAR = 2027;
+
 /**
- * Hook reutilizable y sincronizado para Calendario y Asistencia
+ * Hook reutilizable y sincronizado para Calendario y Asistencia (Estrictamente 2025 a 2027)
  */
 export function useCalendarGrid({ startOnMonday = false } = {}) {
-    const hoy = useMemo(() => new Date(), []);
-    const [currentYear, setCurrentYear] = useState(() => hoy.getFullYear());
-    const [currentMonth, setCurrentMonth] = useState(() => hoy.getMonth()); // 0 a 11
+    const [{ currentYear, currentMonth }, setYearMonth] = useState(() => {
+        const ahora = new Date();
+        const year = Math.min(MAX_CALENDAR_YEAR, Math.max(MIN_CALENDAR_YEAR, ahora.getFullYear()));
+        return { currentYear: year, currentMonth: ahora.getMonth() };
+    });
+
+    const canPrevMonth = !(currentYear <= MIN_CALENDAR_YEAR && currentMonth === 0);
+    const canNextMonth = !(currentYear >= MAX_CALENDAR_YEAR && currentMonth === 11);
+    const canPrevYear = currentYear > MIN_CALENDAR_YEAR;
+    const canNextYear = currentYear < MAX_CALENDAR_YEAR;
 
     const irMesSiguiente = () => {
-        setCurrentMonth(prev => {
-            if (prev === 11) {
-                setCurrentYear(y => y + 1);
-                return 0;
+        setYearMonth(({ currentYear, currentMonth }) => {
+            if (currentMonth === 11) {
+                if (currentYear >= MAX_CALENDAR_YEAR) return { currentYear, currentMonth };
+                return { currentYear: currentYear + 1, currentMonth: 0 };
             }
-            return prev + 1;
+            return { currentYear, currentMonth: currentMonth + 1 };
         });
     };
 
     const irMesAnterior = () => {
-        setCurrentMonth(prev => {
-            if (prev === 0) {
-                setCurrentYear(y => y - 1);
-                return 11;
+        setYearMonth(({ currentYear, currentMonth }) => {
+            if (currentMonth === 0) {
+                if (currentYear <= MIN_CALENDAR_YEAR) return { currentYear, currentMonth };
+                return { currentYear: currentYear - 1, currentMonth: 11 };
             }
-            return prev - 1;
+            return { currentYear, currentMonth: currentMonth - 1 };
         });
+    };
+
+    const irAnioSiguiente = () => {
+        setYearMonth(prev => ({
+            ...prev,
+            currentYear: Math.min(MAX_CALENDAR_YEAR, prev.currentYear + 1)
+        }));
+    };
+
+    const irAnioAnterior = () => {
+        setYearMonth(prev => ({
+            ...prev,
+            currentYear: Math.max(MIN_CALENDAR_YEAR, prev.currentYear - 1)
+        }));
     };
 
     const irHoy = () => {
         const ahora = new Date();
-        setCurrentYear(ahora.getFullYear());
-        setCurrentMonth(ahora.getMonth());
+        const year = Math.min(MAX_CALENDAR_YEAR, Math.max(MIN_CALENDAR_YEAR, ahora.getFullYear()));
+        setYearMonth({ currentYear: year, currentMonth: ahora.getMonth() });
     };
 
     const monthData = useMemo(() => {
@@ -142,15 +166,14 @@ export function useCalendarGrid({ startOnMonday = false } = {}) {
         // Distancia al Lunes anterior
         const diffToMonday = diaSemana === 0 ? -6 : 1 - diaSemana;
         
-        const lunes = new Date(ahora);
-        lunes.setDate(ahora.getDate() + diffToMonday);
+        // Mediodía local para seguridad absoluta contra saltos de horario de verano / zona horaria
+        const lunes = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + diffToMonday, 12, 0, 0);
 
         const result = [];
         const nombresDias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
         for (let i = 0; i < 7; i++) {
-            const d = new Date(lunes);
-            d.setDate(lunes.getDate() + i);
+            const d = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + i, 12, 0, 0);
             const dateStr = formatLocalDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
             const hasAttended = verificarAsistencia(dateStr, asistencias);
             const isFuture = dateStr > hoyStr;
@@ -172,7 +195,15 @@ export function useCalendarGrid({ startOnMonday = false } = {}) {
         ...monthData,
         irMesSiguiente,
         irMesAnterior,
+        irAnioSiguiente,
+        irAnioAnterior,
         irHoy,
+        canPrevMonth,
+        canNextMonth,
+        canPrevYear,
+        canNextYear,
+        MIN_CALENDAR_YEAR,
+        MAX_CALENDAR_YEAR,
         verificarAsistencia,
         getWeeklyDays,
         todayStr: getTodayLocalDateStr(),
