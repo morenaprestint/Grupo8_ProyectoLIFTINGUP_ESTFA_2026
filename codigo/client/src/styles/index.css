@@ -229,3 +229,275 @@ body {
   margin-left: 4px;
   text-decoration: none;
 }
+
+/* ══════════════════════════════════════════════════════
+   MODAL DE SELECCIÓN DE DOBLE ROL (ADMIN & ATLETA)
+   ══════════════════════════════════════════════════════ */
+.dual-role-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(4, 2, 18, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 24px);
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: fadeInModal 0.25s ease-out;
+}
+
+.dual-role-card {
+  position: relative;
+  width: 100%;
+  max-width: min(480px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: linear-gradient(145deg, rgba(20, 14, 48, 0.96) 0%, rgba(10, 6, 28, 0.98) 100%);
+  border: 1px solid rgba(140, 88, 211, 0.45);
+  border-radius: clamp(16px, 4vw, 22px);
+  padding: clamp(18px, 4.5vw, 28px) clamp(14px, 4vw, 24px);
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(140, 88, 211, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2.5vw, 18px);
+  box-sizing: border-box;
+  margin: auto;
+}
+
+.dual-role-close-btn {
+  position: absolute;
+  top: clamp(10px, 2.5vw, 16px);
+  right: clamp(10px, 2.5vw, 16px);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d8ecf8;
+  width: clamp(28px, 6vw, 34px);
+  height: clamp(28px, 6vw, 34px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dual-role-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.08);
+}
+
+.dual-role-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 1.2vw, 8px);
+}
+
+.dual-role-badge {
+  font-size: clamp(9px, 2.2vw, 11px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #00d2ff;
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  padding: 3px clamp(8px, 2.5vw, 14px);
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.dual-role-title {
+  margin: 2px 0 0;
+  font-size: clamp(1.15rem, 4.5vw, 1.45rem);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.dual-role-subtitle {
+  margin: 0;
+  font-size: clamp(0.78rem, 3.2vw, 0.88rem);
+  line-height: 1.45;
+  color: #a0a0b8;
+  max-width: 440px;
+}
+
+.dual-role-options {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 2.2vw, 14px);
+  width: 100%;
+}
+
+.dual-role-btn-option {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(10px, 2.5vw, 16px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: clamp(12px, 3vw, 16px);
+  padding: clamp(12px, 2.8vw, 16px) clamp(12px, 3vw, 16px);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.dual-role-btn-option.admin:hover {
+  background: linear-gradient(135deg, rgba(140, 88, 211, 0.15) 0%, rgba(20, 14, 48, 0.4) 100%);
+  border-color: #8c58d3;
+  box-shadow: 0 8px 30px rgba(140, 88, 211, 0.25);
+  transform: translateY(-2px);
+}
+
+.dual-role-btn-option.atleta:hover {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.15) 0%, rgba(20, 14, 48, 0.4) 100%);
+  border-color: #00d2ff;
+  box-shadow: 0 8px 30px rgba(0, 210, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.dual-role-icon-box {
+  width: clamp(38px, 8.5vw, 46px);
+  height: clamp(38px, 8.5vw, 46px);
+  border-radius: clamp(10px, 2vw, 12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dual-role-icon-box svg {
+  width: clamp(18px, 4.5vw, 24px) !important;
+  height: clamp(18px, 4.5vw, 24px) !important;
+}
+
+.dual-role-icon-box.admin {
+  background: rgba(140, 88, 211, 0.2);
+  color: #bf8eff;
+  border: 1px solid rgba(140, 88, 211, 0.4);
+}
+
+.dual-role-icon-box.atleta {
+  background: rgba(0, 210, 255, 0.18);
+  color: #00d2ff;
+  border: 1px solid rgba(0, 210, 255, 0.4);
+}
+
+.dual-role-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dual-role-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dual-role-name {
+  font-size: clamp(0.9rem, 3.8vw, 1.05rem);
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.dual-role-arrow {
+  color: #a0a0b8;
+  transition: transform 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.dual-role-btn-option:hover .dual-role-arrow {
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.dual-role-desc {
+  margin: 0;
+  font-size: clamp(0.72rem, 2.7vw, 0.8rem);
+  line-height: 1.38;
+  color: #9e9eb4;
+}
+
+.dual-role-tag {
+  margin-top: 2px;
+  font-size: clamp(0.65rem, 2.3vw, 0.72rem);
+  font-weight: 600;
+  font-family: monospace;
+  opacity: 0.85;
+}
+
+.dual-role-tag.admin {
+  color: #bf8eff;
+}
+
+.dual-role-tag.atleta {
+  color: #00d2ff;
+}
+
+.dual-role-footer {
+  text-align: center;
+  margin-top: 2px;
+}
+
+.dual-role-cancel-btn {
+  background: transparent;
+  border: none;
+  color: #7f7f98;
+  font-size: clamp(0.75rem, 2.8vw, 0.82rem);
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s;
+  padding: 4px;
+}
+
+.dual-role-cancel-btn:hover {
+  color: #d8ecf8;
+}
+
+@media (max-width: 480px) {
+  .dual-role-overlay {
+    padding: 10px;
+    align-items: center;
+  }
+
+  .dual-role-card {
+    padding: 16px 12px 12px;
+    gap: 10px;
+    border-radius: 16px;
+    max-height: 94vh;
+  }
+
+  .dual-role-close-btn {
+    top: 8px;
+    right: 8px;
+  }
+
+  .dual-role-btn-option {
+    padding: 10px 10px;
+    gap: 8px;
+    border-radius: 12px;
+  }
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

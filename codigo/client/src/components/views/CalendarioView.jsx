@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getRutinas, updateRutina, getAsistencias } from '../../services/api';
 import { getCurrentUser } from '../../features/authService';
 import { useCalendarGrid } from '../../hooks/useCalendarGrid';
+import ModalAlerta from '../ModalAlerta';
 import '../../styles/adminDashboard.css';
 
 function CalendarioView() {
@@ -9,7 +10,7 @@ function CalendarioView() {
     const [rutinas, setRutinas] = useState([]);
     const [asistencias, setAsistencias] = useState([]);
     const [rutinaSeleccionada, setRutinaSeleccionada] = useState('');
-    const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null); // { dateStr, dayName, dayNumber }
+    const [diaSeleccionadoModal, setDiaSeleccionadoModal] = useState(null);
 
     const [toast, setToast] = useState({ msg: '', tipo: 'success' });
     const mostrarToast = (msg, tipo = 'success') => {
@@ -17,7 +18,12 @@ function CalendarioView() {
         setTimeout(() => setToast({ msg: '', tipo: 'success' }), 3000);
     };
 
-    // Usar hook dinámico de calendario (inicia en Domingo: D, L, M, M, J, V, S)
+    // Modal Popup de validación y errores con estilo neón oscuro
+    const [alertaModal, setAlertaModal] = useState({ isOpen: false, titulo: '', mensaje: '' });
+    const mostrarModalError = (mensaje, titulo = 'Acción no permitida') => {
+        setAlertaModal({ isOpen: true, titulo, mensaje });
+    };
+
     const {
         monthTitle,
         paddingDays,
@@ -25,8 +31,12 @@ function CalendarioView() {
         irMesSiguiente,
         irMesAnterior,
         verificarAsistencia,
-        headers
+        canPrevMonth,
+        canNextMonth
     } = useCalendarGrid({ startOnMonday: false });
+
+    // Array fijo con los nombres completos para evitar abreviaturas (Martes, Miércoles, etc.)
+    const diasCompletosNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
     useEffect(() => {
         cargarDatos();
@@ -45,21 +55,72 @@ function CalendarioView() {
         }
     };
 
+    // Asignar rutina acumulando el día sin pisar los anteriores (soporta toda la semana / más de 5 días)
     const asignarDia = async () => {
         if (!rutinaSeleccionada || !diaSeleccionadoModal) {
-            return mostrarToast('Selecciona una rutina para asignar', 'error');
+            return mostrarModalError('Acción no permitida: selecciona una rutina para asignar a este día.', 'Selección requerida');
         }
+
+        const rutinaObj = rutinas.find(r => r.id_rutina == rutinaSeleccionada);
+        if (!rutinaObj) return;
+
+        let diasActuales = rutinaObj.dia_asignado
+            ? rutinaObj.dia_asignado.split(',').map(d => d.trim()).filter(Boolean)
+            : [];
+
+        const diaNuevo = diaSeleccionadoModal.dayName;
+
+        if (diasActuales.includes(diaNuevo)) {
+            return mostrarModalError(`Esta rutina ya se encuentra asignada al día ${diaNuevo}.`, 'Día ya asignado');
+        }
+
+        // Permitir asignar hasta los 7 días de la semana (mínimo 5 permitidos)
+        if (diasActuales.length >= 7) {
+            return mostrarModalError('Acción no permitida: la rutina ya tiene asignados todos los días posibles de la semana (7 días).', 'Límite alcanzado');
+        }
+
+        diasActuales.push(diaNuevo);
+        const nuevoDiaAsignadoStr = diasActuales.join(',');
+
         try {
-            // Se asigna al nombre del día de la semana correspondiente (ej. 'Lunes')
-            const res = await updateRutina(rutinaSeleccionada, { dia_asignado: diaSeleccionadoModal.dayName });
+            const res = await updateRutina(rutinaSeleccionada, { dia_asignado: nuevoDiaAsignadoStr });
             if (res?.success) {
-                mostrarToast(`Rutina asignada correctamente al ${diaSeleccionadoModal.dayName} (${diaSeleccionadoModal.dayNumber})`, 'success');
+                mostrarToast(`Rutina asignada correctamente al ${diaNuevo}`, 'success');
                 setDiaSeleccionadoModal(null);
                 setRutinaSeleccionada('');
                 cargarDatos();
+            } else {
+                mostrarModalError(res?.message || res?.error || 'No se pudo asignar la rutina al día seleccionado.');
             }
         } catch (error) {
-            mostrarToast('Error al asignar rutina', 'error');
+            mostrarModalError(error?.response?.data?.message || error?.response?.data?.error || error.message || 'Error al asignar la rutina');
+        }
+    };
+
+    // Quitar un día asignado a una rutina desde el modal
+    const removerDiaRutina = async (idRutina, diaARemover) => {
+        const rutinaObj = rutinas.find(r => r.id_rutina == idRutina);
+        if (!rutinaObj) return;
+
+        let diasActuales = rutinaObj.dia_asignado
+            ? rutinaObj.dia_asignado.split(',').map(d => d.trim()).filter(Boolean)
+            : [];
+
+        diasActuales = diasActuales.filter(d => d !== diaARemover);
+        const nuevoDiaAsignadoStr = diasActuales.length > 0 ? diasActuales.join(',') : null;
+
+        try {
+            const res = await updateRutina(idRutina, { dia_asignado: nuevoDiaAsignadoStr });
+            if (res?.success) {
+                mostrarToast(`Se quitó el ${diaARemover} de la rutina`, 'success');
+                cargarDatos();
+                setDiaSeleccionadoModal(prev => ({
+                    ...prev,
+                    rutinas: prev.rutinas.filter(r => r.id_rutina !== idRutina)
+                }));
+            }
+        } catch (error) {
+            mostrarToast('Error al actualizar la rutina', 'error');
         }
     };
 
@@ -74,8 +135,8 @@ function CalendarioView() {
                     <button
                         type="button"
                         onClick={irMesAnterior}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--admin-text)', fontSize: '22px', cursor: 'pointer', padding: '4px 12px' }}
-                        title="Mes anterior"
+                        disabled={!canPrevMonth}
+                        style={{ background: 'transparent', border: 'none', color: canPrevMonth ? 'var(--admin-text)' : 'rgba(255,255,255,0.2)', fontSize: '22px', cursor: canPrevMonth ? 'pointer' : 'not-allowed', padding: '4px 12px' }}
                     >
                         ❮
                     </button>
@@ -85,53 +146,61 @@ function CalendarioView() {
                     <button
                         type="button"
                         onClick={irMesSiguiente}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--admin-text)', fontSize: '22px', cursor: 'pointer', padding: '4px 12px' }}
-                        title="Mes siguiente"
+                        disabled={!canNextMonth}
+                        style={{ background: 'transparent', border: 'none', color: canNextMonth ? 'var(--admin-text)' : 'rgba(255,255,255,0.2)', fontSize: '22px', cursor: canNextMonth ? 'pointer' : 'not-allowed', padding: '4px 12px' }}
                     >
                         ❯
                     </button>
                 </div>
 
-                {/* CUADRÍCULA DINÁMICA DE 7 DÍAS CON ALINEACIÓN CORRECTA */}
+                {/* CUADRÍCULA DINÁMICA DE 7 DÍAS */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', justifyItems: 'center', marginBottom: '10px' }}>
-                    {/* Encabezados de días: D, L, M, M, J, V, S */}
                     {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
                         <div key={i} style={{ color: 'var(--admin-muted)', fontSize: '12px', fontWeight: 'bold', height: '24px', display: 'flex', alignItems: 'center' }}>
                             {d}
                         </div>
                     ))}
 
-                    {/* Celdas vacías de padding para alinear el primer día del mes */}
                     {Array.from({ length: paddingDays }).map((_, i) => (
                         <div key={`pad-${i}`} style={{ width: '38px', height: '38px' }} />
                     ))}
 
-                    {/* Días reales del mes */}
                     {days.map((d) => {
                         const hasAttended = verificarAsistencia(d.dateStr, asistencias);
-                        const rutinasDelDia = rutinas.filter(r => r.dia_asignado === d.dayName);
+
+                        // Obtener nombre completo seguro para el día
+                        const fechaObj = new Date(d.dateStr + 'T00:00:00');
+                        const nombreDiaCompleto = diasCompletosNombres[fechaObj.getDay()];
+
+                        const rutinasDelDia = rutinas.filter(r => {
+                            if (!r.dia_asignado) return false;
+                            const diasList = r.dia_asignado.split(',').map(x => x.trim());
+                            return diasList.includes(nombreDiaCompleto);
+                        });
 
                         return (
                             <div
                                 key={d.dateStr}
-                                onClick={() => setDiaSeleccionadoModal({ dateStr: d.dateStr, dayName: d.dayName, dayNumber: d.day, rutinas: rutinasDelDia })}
+                                onClick={() => setDiaSeleccionadoModal({
+                                    dateStr: d.dateStr,
+                                    dayName: nombreDiaCompleto,
+                                    dayNumber: d.day,
+                                    rutinas: rutinasDelDia
+                                })}
                                 style={{
                                     width: '38px',
                                     height: '38px',
                                     borderRadius: '8px',
                                     background: hasAttended ? 'var(--admin-violet)' : (d.isToday ? 'rgba(0, 210, 255, 0.15)' : 'rgba(255,255,255,0.05)'),
-                                    border: hasAttended
-                                        ? '1px solid #C307CD'
-                                        : (d.isToday ? '1px solid #00d2ff' : '1px solid var(--admin-card)'),
+                                    border: hasAttended ? '1px solid #C307CD' : (d.isToday ? '1px solid #00d2ff' : '1px solid var(--admin-card)'),
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     cursor: 'pointer',
-                                    position: 'relative',
-                                    transition: 'all 0.15s'
+                                    position: 'relative'
                                 }}
-                                title={`${d.dayName} ${d.day} de ${monthTitle}${hasAttended ? ' - Asistencia registrada' : ''}`}
+                                title={`${nombreDiaCompleto} ${d.day} de ${monthTitle}`}
                             >
                                 <span style={{ color: hasAttended ? 'white' : (d.isToday ? '#00d2ff' : 'var(--admin-text)'), fontSize: '13px', fontWeight: '600' }}>
                                     {d.day}
@@ -155,25 +224,33 @@ function CalendarioView() {
 
                         <div style={{ marginTop: '15px' }}>
                             <label style={{ fontSize: '11px', color: 'var(--admin-muted)', display: 'block', marginBottom: '5px' }}>
-                                RUTINA ASIGNADA PARA LOS DÍAS {diaSeleccionadoModal.dayName.toUpperCase()}:
+                                RUTINAS ASIGNADAS PARA LOS {diaSeleccionadoModal.dayName.toUpperCase()}S:
                             </label>
                             {diaSeleccionadoModal.rutinas && diaSeleccionadoModal.rutinas.length > 0 ? (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '15px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
                                     {diaSeleccionadoModal.rutinas.map(r => (
-                                        <span key={r.id_rutina} className="badge-estado activo" style={{ fontSize: '12px', padding: '6px 10px' }}>
-                                            {r.nombre}
-                                        </span>
+                                        <div key={r.id_rutina} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: '6px' }}>
+                                            <span style={{ color: 'white', fontSize: '13px', fontWeight: '500' }}>{r.nombre}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removerDiaRutina(r.id_rutina, diaSeleccionadoModal.dayName)}
+                                                style={{ background: 'transparent', border: 'none', color: '#E74C3C', cursor: 'pointer', fontSize: '12px' }}
+                                                title="Quitar este día de la rutina"
+                                            >
+                                                ✕ Quitar
+                                            </button>
+                                        </div>
                                     ))}
                                 </div>
                             ) : (
                                 <p style={{ color: 'var(--admin-muted)', fontSize: '13px', margin: '0 0 15px 0' }}>
-                                    No hay rutina asignada a este día.
+                                    No hay rutinas asignadas a este día.
                                 </p>
                             )}
                         </div>
 
                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '8px', border: '1px dashed var(--admin-muted)', marginBottom: '20px' }}>
-                            <h4 style={{ color: 'white', fontSize: '13px', margin: '0 0 10px 0' }}>Asignar rutina a los {diaSeleccionadoModal.dayName}s</h4>
+                            <h4 style={{ color: 'white', fontSize: '13px', margin: '0 0 10px 0' }}>Asignar otra rutina a los {diaSeleccionadoModal.dayName}s</h4>
                             <select
                                 className="input-modal"
                                 value={rutinaSeleccionada}
@@ -206,6 +283,13 @@ function CalendarioView() {
                     </div>
                 </div>
             )}
+
+            <ModalAlerta
+                isOpen={alertaModal.isOpen}
+                titulo={alertaModal.titulo}
+                mensaje={alertaModal.mensaje}
+                onClose={() => setAlertaModal({ isOpen: false, titulo: '', mensaje: '' })}
+            />
         </div>
     );
 }

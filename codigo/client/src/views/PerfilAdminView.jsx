@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Edit2, LogOut, ShieldAlert, KeyRound, Mail, UserCheck } from 'lucide-react';
+import { User, Edit2, LogOut, ShieldAlert, KeyRound, Mail, UserCheck, Camera } from 'lucide-react';
 import { getCurrentUser, logout, saveUser } from '../features/authService';
-import { getPerfilAdmin, updatePerfilAdmin } from '../services/api';
+import { getPerfilAdmin, updatePerfilAdmin, uploadFotoPerfil, getImageUrl } from '../services/api';
 import '../styles/perfilViews.css';
 
 export default function PerfilAdminView() {
@@ -15,6 +15,7 @@ export default function PerfilAdminView() {
     apellido: currentAdmin?.apellido || 'Paz',
     nombre_completo: `${currentAdmin?.nombre || 'Maximo'} ${currentAdmin?.apellido || 'Paz'}`.trim(),
     email: currentAdmin?.email || 'MaximoPAz@gmail.com',
+    foto_perfil: currentAdmin?.foto_perfil || null,
     password: currentAdmin?.password || '••••••••'
   });
 
@@ -22,6 +23,7 @@ export default function PerfilAdminView() {
   const [modalEdicion, setModalEdicion] = useState(false);
   const [formEdit, setFormEdit] = useState({ ...perfil });
   const [loading, setLoading] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '', tipo: 'success' });
 
   const mostrarNotificacion = (msg, tipo = 'success') => {
@@ -43,6 +45,7 @@ export default function PerfilAdminView() {
             apellido: d.apellido || perfil.apellido,
             nombre_completo: d.nombre_completo || `${d.nombre || ''} ${d.apellido || ''}`.trim() || perfil.nombre_completo,
             email: d.email || perfil.email,
+            foto_perfil: d.foto_perfil || perfil.foto_perfil,
             password: d.password || perfil.password
           };
           setPerfil(actualizado);
@@ -62,12 +65,71 @@ export default function PerfilAdminView() {
   };
 
   const handleOpenEdit = () => {
-    setFormEdit({ ...perfil });
+    setFormEdit({ ...perfil, password: '', password_actual: '' });
     setModalEdicion(true);
+  };
+
+  const handleSubirFoto = async (e) => {
+    const file = e.target.files?.[0];
+    const ext = file.name ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase() : '';
+    const extensionesPermitidas = ['.png', '.jpg', '.jpeg'];
+    const mimesPermitidos = ['image/png', 'image/jpeg'];
+
+    if (!extensionesPermitidas.includes(ext) || !mimesPermitidos.includes(file.type)) {
+      mostrarNotificacion('Formato de imagen inválido. Solo se admiten formatos PNG y JPEG/JPG.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      mostrarNotificacion('La imagen no debe superar los 5 MB', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    setSubiendoFoto(true);
+    try {
+      const res = await uploadFotoPerfil(perfil.id, file);
+      if (res?.success) {
+        const rutaFoto = res.foto_perfil;
+        setPerfil(prev => ({ ...prev, foto_perfil: rutaFoto }));
+        if (currentAdmin) {
+          saveUser({ ...currentAdmin, foto_perfil: rutaFoto });
+        }
+        mostrarNotificacion('¡Foto de perfil actualizada correctamente!', 'success');
+      } else {
+        mostrarNotificacion(res?.message || 'Error al subir foto', 'error');
+      }
+    } catch (err) {
+      console.error('Error al subir foto admin:', err);
+      mostrarNotificacion(err?.message || 'Error al conectar con el servidor', 'error');
+    } finally {
+      setSubiendoFoto(false);
+      e.target.value = '';
+    }
   };
 
   const handleGuardarPerfil = async (e) => {
     e?.preventDefault();
+
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!EMAIL_REGEX.test(formEdit.email.trim())) {
+      mostrarNotificacion('El correo electrónico no tiene un formato válido con dominio completo (ej. admin@liftingup.com)', 'error');
+      return;
+    }
+
+    const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (formEdit.password && formEdit.password.trim()) {
+      if (!formEdit.password_actual || !formEdit.password_actual.trim()) {
+        mostrarNotificacion('Debes ingresar tu contraseña actual para confirmar el cambio', 'error');
+        return;
+      }
+      if (!PWD_REGEX.test(formEdit.password.trim())) {
+        mostrarNotificacion('La nueva contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula y un número.', 'error');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -75,15 +137,19 @@ export default function PerfilAdminView() {
         id: perfil.id,
         nombre: formEdit.nombre.trim(),
         apellido: formEdit.apellido.trim(),
-        email: formEdit.email.trim(),
-        password: formEdit.password
+        email: formEdit.email.trim()
       };
+      if (formEdit.password && formEdit.password.trim()) {
+        payload.password = formEdit.password.trim();
+        payload.password_actual = formEdit.password_actual.trim();
+      }
 
       const res = await updatePerfilAdmin(payload);
 
       const nuevoPerfil = {
         ...perfil,
         ...payload,
+        password: perfil.password,
         nombre_completo: `${payload.nombre} ${payload.apellido}`.trim()
       };
 
@@ -122,12 +188,32 @@ export default function PerfilAdminView() {
         </div>
       )}
 
-      {/* ─── Hero / Banner Superior ─── */}
+      {/* ─── Hero / Banner Superior con Avatar y Subida con Multer ─── */}
       <section className="perfil-hero-banner">
-        <div className="perfil-avatar-glow-ring">
-          <div className="perfil-avatar-inner">
-            <User className="perfil-avatar-silhouette" />
-          </div>
+        <div className="perfil-avatar-glow-ring" title="Toca para cambiar foto de perfil">
+          <input
+            type="file"
+            id="admin-avatar-upload"
+            accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+            style={{ display: 'none' }}
+            onChange={handleSubirFoto}
+          />
+          <label htmlFor="admin-avatar-upload" className="perfil-avatar-inner" style={{ cursor: 'pointer' }}>
+            {subiendoFoto ? (
+              <span style={{ fontSize: '12px', color: '#00d2ff', fontWeight: 'bold' }}>Subiendo...</span>
+            ) : perfil.foto_perfil ? (
+              <img
+                src={getImageUrl(perfil.foto_perfil)}
+                alt={perfil.nombre_completo}
+                className="perfil-avatar-img"
+              />
+            ) : (
+              <User className="perfil-avatar-silhouette" />
+            )}
+            <div className="perfil-avatar-camera-badge">
+              <Camera size={14} />
+            </div>
+          </label>
         </div>
 
         <div className="perfil-hero-info">
@@ -139,7 +225,7 @@ export default function PerfilAdminView() {
         </div>
       </section>
 
-      {/* ─── Tarjeta: Información de Cuenta (OMITE Datos Físicos) ─── */}
+      {/* ─── Tarjeta: Información de Cuenta ─── */}
       <section className="perfil-card">
         <div className="perfil-card-header">
           <h2 className="perfil-card-title">Información de Cuenta</h2>
@@ -174,8 +260,8 @@ export default function PerfilAdminView() {
                 <KeyRound size={14} style={{ display: 'inline', marginRight: '6px' }} />
                 Contraseña:
               </span>
-              <span className="perfil-password-dots">
-                {mostrarPassword ? (perfil.password || '••••••••') : '••••••••'}
+              <span className="perfil-password-dots" style={mostrarPassword ? { fontSize: '0.88rem', color: '#00d2ff', fontStyle: 'italic', letterSpacing: 'normal' } : {}}>
+                {mostrarPassword ? 'Contraseña encriptada por seguridad' : '••••••••'}
               </span>
             </div>
             <button
@@ -260,14 +346,32 @@ export default function PerfilAdminView() {
               </div>
 
               <div className="perfil-form-group">
-                <label className="perfil-form-label">Contraseña</label>
+                <label className="perfil-form-label">Nueva Contraseña (opcional)</label>
                 <input
-                  type="text"
+                  type="password"
                   className="perfil-form-input"
-                  value={formEdit.password}
+                  placeholder="Dejar en blanco para conservar la actual"
+                  value={formEdit.password || ''}
                   onChange={(e) => setFormEdit({ ...formEdit, password: e.target.value })}
                 />
+                <span className="field-hint" style={{ fontSize: '11px', color: '#8fb8d6', marginTop: '4px', display: 'block' }}>
+                  Opcional. Si se modifica: mín. 8 caracteres, 1 mayúscula, 1 minúscula y 1 número.
+                </span>
               </div>
+
+              {formEdit.password && formEdit.password.trim() ? (
+                <div className="perfil-form-group">
+                  <label className="perfil-form-label">Contraseña Actual * (Requerida para confirmar el cambio)</label>
+                  <input
+                    type="password"
+                    className="perfil-form-input"
+                    placeholder="Ingresa tu contraseña actual"
+                    value={formEdit.password_actual || ''}
+                    onChange={(e) => setFormEdit({ ...formEdit, password_actual: e.target.value })}
+                    required
+                  />
+                </div>
+              ) : null}
 
               <div className="perfil-modal-actions">
                 <button

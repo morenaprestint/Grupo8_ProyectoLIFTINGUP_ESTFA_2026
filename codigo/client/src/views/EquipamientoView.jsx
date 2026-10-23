@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Camera, 
-  Plus, 
-  Wrench, 
-  Dumbbell, 
-  CheckCircle2, 
-  AlertTriangle,
+import {
+  Camera,
+  Plus,
+  Wrench,
+  Dumbbell,
   MapPin,
   Calendar,
   Building,
@@ -14,12 +12,14 @@ import {
   Pencil,
   X
 } from 'lucide-react';
-import { 
-  getEquipamiento, 
-  createEquipamiento, 
-  updateEquipamiento, 
-  deleteEquipamiento 
+import {
+  getEquipamiento,
+  createEquipamiento,
+  updateEquipamiento,
+  deleteEquipamiento
 } from '../services/api';
+import ModalAlerta from '../components/ModalAlerta';
+import UsuarioModal from '../components/UsuarioModal';
 import '../styles/equipamientoView.css';
 
 const FORM_INICIAL = {
@@ -48,6 +48,13 @@ export default function EquipamientoView() {
   const [formEdit, setFormEdit] = useState(FORM_INICIAL);
   const [guardandoEdit, setGuardandoEdit] = useState(false);
   const [eliminandoId, setEliminandoId] = useState(null);
+  const [confirmEliminar, setConfirmEliminar] = useState(null);
+
+  // Modal Popup para validaciones y errores (estilo neón oscuro)
+  const [alertaModal, setAlertaModal] = useState({ isOpen: false, titulo: '', mensaje: '' });
+  const mostrarModalError = (mensaje, titulo = 'Acción no permitida') => {
+    setAlertaModal({ isOpen: true, titulo, mensaje });
+  };
 
   const mostrarNotificacion = (msg, tipo = 'success') => {
     setToast({ show: true, msg, tipo });
@@ -64,6 +71,7 @@ export default function EquipamientoView() {
       }
     } catch (err) {
       console.warn('Error al cargar equipamiento desde API:', err);
+      mostrarNotificacion('Error al conectar con el servidor', 'error');
     } finally {
       setCargandoLista(false);
     }
@@ -100,8 +108,22 @@ export default function EquipamientoView() {
   // Guardar nueva máquina mediante POST /api/equipamiento
   const handleGuardar = async (e) => {
     if (e) e.preventDefault();
-    if (!form.nombre.trim()) {
-      return mostrarNotificacion('El nombre de la máquina es obligatorio', 'error');
+
+    const NOMBRE_MAQUINA_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.]{3,50}$/;
+    const ALFANUMERICO_OPCIONAL_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\/]{1,100}$/;
+
+    if (!form.nombre || !form.nombre.trim() || !NOMBRE_MAQUINA_REGEX.test(form.nombre.trim())) {
+      return mostrarModalError('Acción no permitida: el nombre del equipamiento debe tener entre 3 y 50 caracteres válidos sin caracteres extraños.');
+    }
+
+    if (form.marca && form.marca.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(form.marca.trim())) {
+      return mostrarModalError('Acción no permitida: el campo marca solo permite caracteres alfanuméricos válidos.');
+    }
+    if (form.modelo && form.modelo.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(form.modelo.trim())) {
+      return mostrarModalError('Acción no permitida: el campo modelo solo permite caracteres alfanuméricos válidos.');
+    }
+    if (form.ubicacion && form.ubicacion.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(form.ubicacion.trim())) {
+      return mostrarModalError('Acción no permitida: el campo ubicación solo permite caracteres alfanuméricos válidos.');
     }
 
     setGuardando(true);
@@ -120,15 +142,13 @@ export default function EquipamientoView() {
         mostrarNotificacion('¡Máquina guardada con éxito en el sistema!', 'success');
         setForm(FORM_INICIAL);
         cargarMaquinas();
+        setActiveTab('mantenimiento');
       } else {
-        mostrarNotificacion(res?.message || 'Error al guardar la máquina', 'error');
+        mostrarModalError(res?.message || 'Error al guardar la máquina');
       }
     } catch (err) {
       console.error('Error al guardar equipamiento:', err);
-      const nuevaLocal = { id: Date.now(), ...form };
-      setMaquinas(prev => [nuevaLocal, ...prev]);
-      setForm(FORM_INICIAL);
-      mostrarNotificacion('Máquina registrada localmente', 'success');
+      mostrarModalError(err?.response?.data?.message || err?.message || 'Error al registrar el equipamiento');
     } finally {
       setGuardando(false);
     }
@@ -143,13 +163,16 @@ export default function EquipamientoView() {
   const handleToggleEstatus = async (maquina) => {
     const nuevoEstatus = maquina.estatus === 'Disponible' ? 'En Mantenimiento' : 'Disponible';
     try {
-      await updateEquipamiento(maquina.id, { estatus: nuevoEstatus });
-      mostrarNotificacion(`Estado de "${maquina.nombre}" actualizado a: ${nuevoEstatus}`, 'success');
-      cargarMaquinas();
+      const res = await updateEquipamiento(maquina.id, { estatus: nuevoEstatus });
+      if (res?.success) {
+        mostrarNotificacion(`Estado de "${maquina.nombre}" actualizado a: ${nuevoEstatus}`, 'success');
+        cargarMaquinas();
+      } else {
+        mostrarModalError(res?.message || 'No se pudo actualizar el estatus');
+      }
     } catch (err) {
       console.error('Error al actualizar estatus:', err);
-      setMaquinas(prev => prev.map(m => m.id === maquina.id ? { ...m, estatus: nuevoEstatus } : m));
-      mostrarNotificacion(`Estado actualizado a: ${nuevoEstatus}`, 'success');
+      mostrarModalError(err?.response?.data?.message || err?.message || 'Error de conexión al actualizar el estatus');
     }
   };
 
@@ -176,8 +199,22 @@ export default function EquipamientoView() {
   // Confirmar y actualizar máquina mediante PUT /api/equipamiento/:id
   const handleConfirmarEdicion = async (e) => {
     if (e) e.preventDefault();
-    if (!formEdit.nombre.trim()) {
-      return mostrarNotificacion('El nombre de la máquina es obligatorio', 'error');
+
+    const NOMBRE_MAQUINA_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.]{3,50}$/;
+    const ALFANUMERICO_OPCIONAL_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\/]{1,100}$/;
+
+    if (!formEdit.nombre || !formEdit.nombre.trim() || !NOMBRE_MAQUINA_REGEX.test(formEdit.nombre.trim())) {
+      return mostrarModalError('Acción no permitida: el nombre del equipamiento debe tener entre 3 y 50 caracteres válidos sin caracteres extraños.');
+    }
+
+    if (formEdit.marca && formEdit.marca.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(formEdit.marca.trim())) {
+      return mostrarModalError('Acción no permitida: el campo marca solo permite caracteres alfanuméricos válidos.');
+    }
+    if (formEdit.modelo && formEdit.modelo.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(formEdit.modelo.trim())) {
+      return mostrarModalError('Acción no permitida: el campo modelo solo permite caracteres alfanuméricos válidos.');
+    }
+    if (formEdit.ubicacion && formEdit.ubicacion.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(formEdit.ubicacion.trim())) {
+      return mostrarModalError('Acción no permitida: el campo ubicación solo permite caracteres alfanuméricos válidos.');
     }
 
     setGuardandoEdit(true);
@@ -197,36 +234,34 @@ export default function EquipamientoView() {
         handleCerrarEditar();
         cargarMaquinas();
       } else {
-        mostrarNotificacion(res?.message || 'Error al actualizar la máquina', 'error');
+        mostrarModalError(res?.message || 'Error al actualizar la máquina');
       }
     } catch (err) {
       console.error('Error al actualizar equipamiento:', err);
-      setMaquinas(prev => prev.map(m => m.id === formEdit.id ? { ...m, ...formEdit } : m));
-      mostrarNotificacion('Máquina actualizada localmente', 'success');
-      handleCerrarEditar();
+      mostrarModalError(err?.response?.data?.message || err?.message || 'Error al actualizar la máquina');
     } finally {
       setGuardandoEdit(false);
     }
   };
 
-  // Eliminar máquina mediante DELETE /api/equipamiento/:id
-  const handleEliminar = async (id, nombre) => {
-    const confirmacion = window.confirm(`¿Estás seguro de eliminar la máquina "${nombre || 'seleccionada'}"? Esta acción no se puede deshacer.`);
-    if (!confirmacion) return;
+  // Eliminar máquina mediante modal personalizado (sin window.confirm nativo)
+  const handleConfirmarEliminar = async () => {
+    if (!confirmEliminar) return;
+    const { id } = confirmEliminar;
 
     setEliminandoId(id);
     try {
       const res = await deleteEquipamiento(id);
       if (res?.success) {
         mostrarNotificacion('Máquina eliminada correctamente del inventario', 'success');
+        setConfirmEliminar(null);
         cargarMaquinas();
       } else {
-        mostrarNotificacion(res?.message || 'Error al eliminar la máquina', 'error');
+        mostrarModalError(res?.message || 'Error al eliminar la máquina');
       }
     } catch (err) {
       console.error('Error al eliminar equipamiento:', err);
-      setMaquinas(prev => prev.filter(m => m.id !== id));
-      mostrarNotificacion('Máquina eliminada localmente', 'success');
+      mostrarModalError(err?.response?.data?.message || err?.message || 'Error de conexión al eliminar la máquina');
     } finally {
       setEliminandoId(null);
     }
@@ -289,12 +324,12 @@ export default function EquipamientoView() {
                 <div className="equip-form-group">
                   <label className="equip-label">
                     <Dumbbell size={15} color="#00d2ff" />
-                    Nombre de la Máquina
+                    Nombre de la Máquina *
                   </label>
                   <input
                     type="text"
                     className="equip-input"
-                    placeholder="Ej. Prensa"
+                    placeholder="Ej. Prensa de Piernas"
                     value={form.nombre}
                     onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                     required
@@ -339,10 +374,10 @@ export default function EquipamientoView() {
                       onChange={handleImageChange}
                     />
                     {form.imagen_url ? (
-                      <img 
-                        src={form.imagen_url} 
-                        alt="Vista previa" 
-                        className="equip-image-preview" 
+                      <img
+                        src={form.imagen_url}
+                        alt="Vista previa"
+                        className="equip-image-preview"
                       />
                     ) : (
                       <>
@@ -396,9 +431,10 @@ export default function EquipamientoView() {
                     Fecha de Adquisición
                   </label>
                   <input
-                    type="text"
+                    type="date"
+                    min="2010-01-01"
+                    max={new Date().toISOString().slice(0, 10)}
                     className="equip-input"
-                    placeholder="Ej. 2025-05-10 o 5/10"
                     value={form.fecha_adquisicion}
                     onChange={(e) => setForm({ ...form, fecha_adquisicion: e.target.value })}
                   />
@@ -496,7 +532,7 @@ export default function EquipamientoView() {
                     <button
                       type="button"
                       className="equip-card-btn-delete"
-                      onClick={() => handleEliminar(m.id, m.nombre)}
+                      onClick={() => setConfirmEliminar({ id: m.id, nombre: m.nombre })}
                       disabled={eliminandoId === m.id}
                       title="Eliminar máquina"
                       aria-label={`Eliminar ${m.nombre}`}
@@ -529,8 +565,8 @@ export default function EquipamientoView() {
       {/* ─── MODAL EDITAR MÁQUINA (PUT) ─── */}
       {modalEditarOpen && (
         <div className="equip-modal-overlay" onClick={handleCerrarEditar}>
-          <div 
-            className="equip-modal-content" 
+          <div
+            className="equip-modal-content"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -546,9 +582,9 @@ export default function EquipamientoView() {
                   <p className="equip-modal-subtitle">Modifica los datos del equipo y confirma los cambios</p>
                 </div>
               </div>
-              <button 
-                type="button" 
-                className="equip-modal-btn-close" 
+              <button
+                type="button"
+                className="equip-modal-btn-close"
                 onClick={handleCerrarEditar}
                 aria-label="Cerrar modal"
               >
@@ -622,10 +658,10 @@ export default function EquipamientoView() {
                           onChange={handleEditImageChange}
                         />
                         {formEdit.imagen_url ? (
-                          <img 
-                            src={formEdit.imagen_url} 
-                            alt="Vista previa" 
-                            className="equip-image-preview" 
+                          <img
+                            src={formEdit.imagen_url}
+                            alt="Vista previa"
+                            className="equip-image-preview"
                           />
                         ) : (
                           <>
@@ -679,10 +715,11 @@ export default function EquipamientoView() {
                         Fecha de Adquisición
                       </label>
                       <input
-                        type="text"
+                        type="date"
+                        min="2010-01-01"
+                        max={new Date().toISOString().slice(0, 10)}
                         className="equip-input"
-                        placeholder="Ej. 2025-05-10"
-                        value={formEdit.fecha_adquisicion}
+                        value={formEdit.fecha_adquisicion ? String(formEdit.fecha_adquisicion).slice(0, 10) : ''}
                         onChange={(e) => setFormEdit(prev => ({ ...prev, fecha_adquisicion: e.target.value }))}
                       />
                     </div>
@@ -712,6 +749,31 @@ export default function EquipamientoView() {
           </div>
         </div>
       )}
+
+      {/* Modal de confirmación para eliminar máquina sin alerts nativos */}
+      <UsuarioModal
+        isOpen={Boolean(confirmEliminar)}
+        title="¿Eliminar máquina del inventario?"
+        onClose={() => setConfirmEliminar(null)}
+        onSave={handleConfirmarEliminar}
+        saveText={eliminandoId ? 'Eliminando...' : 'Sí, eliminar'}
+        disabled={Boolean(eliminandoId)}
+        isSmall
+      >
+        {confirmEliminar && (
+          <p className="confirm-texto" style={{ color: '#d4cae8', fontSize: '14px', lineHeight: '1.5' }}>
+            ¿Estás seguro de eliminar la máquina <strong style={{ color: '#00d2ff' }}>{confirmEliminar.nombre}</strong>? Esta acción no se puede deshacer.
+          </p>
+        )}
+      </UsuarioModal>
+
+      {/* Modal Popup de errores y validaciones preventivas */}
+      <ModalAlerta
+        isOpen={alertaModal.isOpen}
+        titulo={alertaModal.titulo}
+        mensaje={alertaModal.mensaje}
+        onClose={() => setAlertaModal({ isOpen: false, titulo: '', mensaje: '' })}
+      />
     </div>
   );
 }

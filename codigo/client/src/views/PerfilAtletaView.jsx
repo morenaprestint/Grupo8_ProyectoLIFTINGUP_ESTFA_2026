@@ -6,10 +6,16 @@ import {
   LogOut,
   ShieldCheck,
   Activity,
-  Award
+  Award,
+  Camera,
+  Mail,
+  Lock,
+  KeyRound,
+  X
 } from 'lucide-react';
 import { getCurrentUser, logout, saveUser } from '../features/authService';
-import { getPerfilUsuario, updatePerfilUsuario } from '../services/api';
+import { getPerfilUsuario, updatePerfilUsuario, uploadFotoPerfil, cambiarEmail, cambiarPassword, getImageUrl } from '../services/api';
+import ModalAlerta from '../components/ModalAlerta';
 import '../styles/perfilViews.css';
 
 export default function PerfilAtletaView() {
@@ -22,6 +28,7 @@ export default function PerfilAtletaView() {
     apellido: currentUser?.apellido || 'Rocco',
     nombre_completo: `${currentUser?.nombre || 'Morena'} ${currentUser?.apellido || 'Rocco'}`.trim(),
     email: currentUser?.email || 'Morenarocco@gmail.com',
+    foto_perfil: currentUser?.foto_perfil || null,
     peso: currentUser?.peso ? Number(currentUser.peso) : 82,
     altura: currentUser?.altura ? Number(currentUser.altura) : 1.80,
     objetivo: currentUser?.objetivo || 'Ganar masa muscular',
@@ -29,10 +36,8 @@ export default function PerfilAtletaView() {
     rol: 'atleta'
   });
 
-  // Modal de edición de datos personales
+  // Modal de edición de datos personales (Nombre, Apellido, Peso, Altura)
   const [modalEdicion, setModalEdicion] = useState(false);
-
-  // Formulario de edición de datos personales (Nombre, Apellido, Peso, Altura)
   const [formEdit, setFormEdit] = useState({
     nombre: perfil.nombre,
     apellido: perfil.apellido,
@@ -40,13 +45,36 @@ export default function PerfilAtletaView() {
     altura: perfil.altura
   });
 
-  // Estados de carga y alertas
+  // Modal de cambio de correo electrónico seguro (requiere contraseña actual)
+  const [modalEmail, setModalEmail] = useState(false);
+  const [formEmail, setFormEmail] = useState({
+    nuevo_email: '',
+    password_actual: ''
+  });
+  const [loadingEmail, setLoadingEmail] = useState(false);
+
+  // Modal de cambio de contraseña seguro (requiere contraseña actual)
+  const [modalPassword, setModalPassword] = useState(false);
+  const [formPassword, setFormPassword] = useState({
+    password_actual: '',
+    nueva_password: '',
+    confirm_password: ''
+  });
+  const [loadingPassword, setLoadingPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '', tipo: 'success' });
+
+  // Modal Popup de validación y errores (estilo neón oscuro)
+  const [alertaModal, setAlertaModal] = useState({ isOpen: false, titulo: '', mensaje: '' });
+  const mostrarModalError = (mensaje, titulo = 'Acción no permitida') => {
+    setAlertaModal({ isOpen: true, titulo, mensaje });
+  };
 
   const mostrarNotificacion = (msg, tipo = 'success') => {
     setToast({ show: true, msg, tipo });
-    setTimeout(() => setToast({ show: false, msg: '', tipo: 'success' }), 3500);
+    setTimeout(() => setToast({ show: false, msg: '', tipo: 'success' }), 4000);
   };
 
   // Cargar datos reales desde el endpoint GET /api/usuarios/perfil
@@ -63,6 +91,7 @@ export default function PerfilAtletaView() {
             apellido: d.apellido || perfil.apellido,
             nombre_completo: d.nombre_completo || `${d.nombre || ''} ${d.apellido || ''}`.trim() || perfil.nombre_completo,
             email: d.email || perfil.email,
+            foto_perfil: d.foto_perfil || perfil.foto_perfil,
             peso: d.peso != null ? Number(d.peso) : perfil.peso,
             altura: d.altura != null ? Number(d.altura) : perfil.altura,
             objetivo: d.objetivo || perfil.objetivo,
@@ -100,9 +129,64 @@ export default function PerfilAtletaView() {
     setModalEdicion(true);
   };
 
-  // ─── Guardar Datos Personales (Nombre, Apellido, Peso, Altura) ────────────
+  // ─── Subida de Foto de Perfil (Backend con Multer) ─────────────────────────
+  const handleSubirFoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase() : '';
+    const extensionesPermitidas = ['.png', '.jpg', '.jpeg'];
+    const mimesPermitidos = ['image/png', 'image/jpeg'];
+
+    if (!extensionesPermitidas.includes(ext) || !mimesPermitidos.includes(file.type)) {
+      mostrarNotificacion('Formato de imagen inválido. Solo se admiten formatos PNG y JPEG/JPG.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      mostrarNotificacion('La imagen no debe superar los 5 MB', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    setSubiendoFoto(true);
+    try {
+      const res = await uploadFotoPerfil(perfil.id, file);
+      if (res?.success) {
+        const rutaFoto = res.foto_perfil;
+        setPerfil(prev => ({ ...prev, foto_perfil: rutaFoto }));
+
+        if (currentUser) {
+          saveUser({ ...currentUser, foto_perfil: rutaFoto });
+        }
+        mostrarNotificacion('¡Foto de perfil actualizada correctamente!', 'success');
+      } else {
+        mostrarNotificacion(res?.message || 'Error al subir foto de perfil', 'error');
+      }
+    } catch (err) {
+      console.error('Error al subir foto:', err);
+      mostrarNotificacion(err?.message || 'Error al conectar con el servidor', 'error');
+    } finally {
+      setSubiendoFoto(false);
+      e.target.value = ''; // Reset input
+    }
+  };
+
+  // ─── Guardar Datos Personales con Validación Estricta ───────────────────────
   const handleGuardarPerfil = async (e) => {
     e?.preventDefault();
+
+    const alturaNum = Number(formEdit.altura);
+    if (isNaN(alturaNum) || alturaNum < 1.00 || alturaNum > 2.50) {
+      return mostrarNotificacion('La altura debe estar estrictamente en el rango de 1.00 a 2.50 metros.', 'error');
+    }
+
+    const pesoNum = Number(String(formEdit.peso).replace(',', '.'));
+    if (isNaN(pesoNum) || pesoNum < 40 || pesoNum > 200) {
+      return mostrarNotificacion('Error: Ingrese un peso válido (el peso corporal debe estar estrictamente entre 40 kg y 200 kg).', 'error');
+    }
+
     setLoading(true);
 
     try {
@@ -110,8 +194,8 @@ export default function PerfilAtletaView() {
         id: perfil.id,
         nombre: formEdit.nombre.trim(),
         apellido: formEdit.apellido.trim(),
-        peso: Number(formEdit.peso) || null,
-        altura: Number(formEdit.altura) || null
+        peso: pesoNum,
+        altura: alturaNum
       };
 
       const res = await updatePerfilUsuario(payload);
@@ -141,10 +225,127 @@ export default function PerfilAtletaView() {
     }
   };
 
+  // ─── Modificar Correo Electrónico Seguro (Bcrypt) ─────────────────────────
+  const handleConfirmarCambioEmail = async (e) => {
+    e?.preventDefault();
+
+    const nuevoEmailClean = formEmail.nuevo_email.trim().toLowerCase();
+    const passActualClean = formEmail.password_actual.trim();
+
+    if (!nuevoEmailClean) {
+      return mostrarNotificacion('Ingresá el nuevo correo electrónico', 'error');
+    }
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!EMAIL_REGEX.test(nuevoEmailClean)) {
+      return mostrarNotificacion('El correo electrónico no tiene un formato válido con dominio completo (ej. usuario@gmail.com).', 'error');
+    }
+
+    if (!passActualClean) {
+      return mostrarNotificacion('Debes ingresar tu contraseña actual para confirmar', 'error');
+    }
+    if (nuevoEmailClean === perfil.email.toLowerCase()) {
+      return mostrarNotificacion('El nuevo correo debe ser diferente al actual', 'error');
+    }
+
+    setLoadingEmail(true);
+
+    try {
+      const res = await cambiarEmail({
+        id: perfil.id,
+        nuevo_email: nuevoEmailClean,
+        password_actual: passActualClean
+      });
+
+      if (res?.success) {
+        setModalEmail(false);
+        setFormEmail({ nuevo_email: '', password_actual: '' });
+
+        // Conservar el email principal activo y registrar email_pendiente para verificación
+        const updated = {
+          ...perfil,
+          email_pendiente: nuevoEmailClean
+        };
+        setPerfil(updated);
+
+        if (currentUser) {
+          saveUser({
+            ...currentUser,
+            email_pendiente: nuevoEmailClean
+          });
+        }
+
+        if (res?.requiereRevalidarSesion) {
+          mostrarNotificacion('Has solicitado cambiar tu correo electrónico. Por seguridad, se ha cerrado tu sesión. Por favor verifica tu nuevo correo e inicia sesión nuevamente.', 'info');
+          setTimeout(() => {
+            logout();
+            localStorage.clear();
+            navigate('/login');
+          }, 2000);
+          return;
+        }
+
+        mostrarNotificacion('Se envió un código de 6 dígitos al nuevo correo. Redirigiendo a verificación...', 'success');
+        setTimeout(() => {
+          navigate('/verify-email');
+        }, 1500);
+      } else {
+        mostrarNotificacion(res?.message || 'Error al cambiar correo', 'error');
+      }
+    } catch (err) {
+      console.error('Error al cambiar email:', err);
+      mostrarNotificacion(err?.message || 'Contraseña incorrecta o error al cambiar el correo', 'error');
+    } finally {
+      setLoadingEmail(false);
+    }
+  };
+
+  const handleConfirmarCambioPassword = async (e) => {
+    e?.preventDefault();
+    if (!formPassword.password_actual.trim()) {
+      mostrarModalError('Acción no permitida: debes ingresar tu contraseña actual.', 'Campo requerido');
+      return;
+    }
+    if (!formPassword.nueva_password.trim()) {
+      mostrarModalError('Acción no permitida: debes ingresar la nueva contraseña.', 'Campo requerido');
+      return;
+    }
+    if (formPassword.nueva_password !== formPassword.confirm_password) {
+      mostrarModalError('Acción no permitida: las contraseñas ingresadas no coinciden.', 'Validación de contraseña');
+      return;
+    }
+    const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!PWD_REGEX.test(formPassword.nueva_password)) {
+      mostrarModalError('Acción no permitida: la nueva contraseña debe tener al menos 8 caracteres, incluyendo una mayúscula, una minúscula y un número.', 'Contraseña insegura');
+      return;
+    }
+
+    setLoadingPassword(true);
+    try {
+      const res = await cambiarPassword({
+        id: perfil.id,
+        password_actual: formPassword.password_actual.trim(),
+        nueva_password: formPassword.nueva_password.trim(),
+        confirm_password: formPassword.confirm_password.trim()
+      });
+      if (res?.success) {
+        mostrarNotificacion('¡Contraseña actualizada exitosamente!', 'success');
+        setModalPassword(false);
+        setFormPassword({ password_actual: '', nueva_password: '', confirm_password: '' });
+      } else {
+        mostrarModalError(res?.message || 'Error al cambiar la contraseña');
+      }
+    } catch (err) {
+      mostrarModalError(err?.message || 'Error al conectar con el servidor para actualizar la contraseña');
+    } finally {
+      setLoadingPassword(false);
+    }
+  };
+
+
   // Cálculo de IMC estimado
-  const imc = (perfil.peso && perfil.altura && perfil.altura > 0)
-    ? (perfil.peso / (perfil.altura * perfil.altura)).toFixed(1)
-    : '25.3';
+  const imc = (perfil.peso && perfil.altura && Number(perfil.altura) > 0)
+    ? (Number(perfil.peso) / (Number(perfil.altura) * Number(perfil.altura))).toFixed(1)
+    : 'No especificado';
 
   return (
     <div className="dashboard-content perfil-dashboard-container">
@@ -154,12 +355,35 @@ export default function PerfilAtletaView() {
         </div>
       )}
 
-      {/* ─── Hero / Banner Superior ─── */}
+      {/* ─── Hero / Banner Superior con Avatar Interactivo ─── */}
       <section className="perfil-hero-banner">
-        <div className="perfil-avatar-glow-ring">
-          <div className="perfil-avatar-inner">
-            <User className="perfil-avatar-silhouette" />
-          </div>
+        <div
+          className="perfil-avatar-glow-ring"
+          title="Toca para cambiar foto de perfil"
+        >
+          <input
+            type="file"
+            id="atleta-avatar-upload"
+            accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+            style={{ display: 'none' }}
+            onChange={handleSubirFoto}
+          />
+          <label htmlFor="atleta-avatar-upload" className="perfil-avatar-inner" style={{ cursor: 'pointer' }}>
+            {subiendoFoto ? (
+              <span style={{ fontSize: '12px', color: '#00d2ff', fontWeight: 'bold' }}>Subiendo...</span>
+            ) : perfil.foto_perfil ? (
+              <img
+                src={getImageUrl(perfil.foto_perfil)}
+                alt={perfil.nombre_completo}
+                className="perfil-avatar-img"
+              />
+            ) : (
+              <User className="perfil-avatar-silhouette" />
+            )}
+            <div className="perfil-avatar-camera-badge">
+              <Camera size={14} />
+            </div>
+          </label>
         </div>
 
         <div className="perfil-hero-info">
@@ -193,14 +417,16 @@ export default function PerfilAtletaView() {
               >
                 <Edit2 size={16} />
               </button>
-              <span className="perfil-fisico-value">{perfil.peso} Kg</span>
+              <span className="perfil-fisico-value">
+                {perfil.peso != null && perfil.peso !== '' ? `${perfil.peso} Kg` : 'No especificado'}
+              </span>
               <span className="perfil-fisico-label">Peso actual</span>
             </div>
 
             {/* Altura */}
             <div className="perfil-fisico-box perfil-fisico-box-purple">
               <span className="perfil-fisico-value">
-                {Number(perfil.altura).toFixed(2)} m
+                {perfil.altura != null && perfil.altura !== '' ? `${Number(perfil.altura).toFixed(2)} m` : 'No especificado'}
               </span>
               <span className="perfil-fisico-label">Altura</span>
             </div>
@@ -210,15 +436,15 @@ export default function PerfilAtletaView() {
           <div className="perfil-datos-extra-card">
             <div className="perfil-datos-extra-row">
               <span><Activity size={14} style={{ display: 'inline', marginRight: '4px' }} /> IMC Estimado:</span>
-              <strong>{imc} kg/m²</strong>
+              <strong>{imc !== 'No especificado' ? `${imc} kg/m²` : 'No especificado'}</strong>
             </div>
             <div className="perfil-datos-extra-row">
               <span><Award size={14} style={{ display: 'inline', marginRight: '4px' }} /> Objetivo:</span>
-              <strong>{perfil.objetivo}</strong>
+              <strong>{perfil.objetivo || 'No especificado'}</strong>
             </div>
             <div className="perfil-datos-extra-row">
               <span>Nivel:</span>
-              <strong>{perfil.nivel_entrenamiento}</strong>
+              <strong>{perfil.nivel_entrenamiento || 'No especificado'}</strong>
             </div>
           </div>
         </section>
@@ -240,10 +466,18 @@ export default function PerfilAtletaView() {
             </div>
 
             <div className="perfil-info-row">
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <span className="perfil-info-label-inline">Email:</span>
                 <span className="perfil-info-value-inline">{perfil.email}</span>
-                <span className="perfil-readonly-tag">🔒 No editable</span>
+                <button
+                  type="button"
+                  className="perfil-btn-cambiar-email"
+                  onClick={() => setModalEmail(true)}
+                  title="Cambiar correo con confirmación de contraseña"
+                >
+                  <Mail size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                  Modificar Correo
+                </button>
               </div>
             </div>
 
@@ -251,14 +485,23 @@ export default function PerfilAtletaView() {
               <div>
                 <span className="perfil-info-label-inline">Rol de Cuenta:</span>
                 <span className="perfil-info-value-inline" style={{ textTransform: 'capitalize' }}>{perfil.rol}</span>
-                <span className="perfil-readonly-tag">🔒 No editable</span>
+                <span className="perfil-readonly-tag">🔒 Asignado</span>
               </div>
             </div>
 
             <div className="perfil-info-row">
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <span className="perfil-info-label-inline">Contraseña:</span>
                 <span className="perfil-password-dots">••••••••••••</span>
+                <button
+                  type="button"
+                  className="perfil-btn-cambiar-email"
+                  onClick={() => setModalPassword(true)}
+                  title="Modificar tu contraseña con confirmación de la actual"
+                >
+                  <Lock size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                  Modificar Contraseña
+                </button>
               </div>
             </div>
           </div>
@@ -284,7 +527,7 @@ export default function PerfilAtletaView() {
         </section>
       </div>
 
-      {/* ─── MODAL: Modificación de Datos Personales ─── */}
+      {/* ─── MODAL 1: Modificación de Datos Personales (Altura 1.00 - 2.50 y Peso >= 0) ─── */}
       {modalEdicion && (
         <div className="perfil-modal-overlay" onClick={() => setModalEdicion(false)}>
           <div className="perfil-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -316,61 +559,36 @@ export default function PerfilAtletaView() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="perfil-form-group">
-                  <label className="perfil-form-label">Peso Corporal (Kg)</label>
+                  <label className="perfil-form-label">Peso Corporal (Kg) [40 a 200 kg] *</label>
                   <input
-                    type="number"
-                    step="0.1"
-                    min="30"
-                    max="300"
+                    type="text"
+                    inputMode="decimal"
                     className="perfil-form-input"
                     value={formEdit.peso || ''}
-                    onChange={(e) => setFormEdit({ ...formEdit, peso: e.target.value })}
-                    placeholder="Ej: 82.5"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(',', '.');
+                      if (val === '' || /^\d*(\.\d*)?$/.test(val)) {
+                        setFormEdit({ ...formEdit, peso: val });
+                      }
+                    }}
+                    placeholder="Ej: 89.6 (40 a 200 kg)"
+                    required
                   />
                 </div>
                 <div className="perfil-form-group">
-                  <label className="perfil-form-label">Altura (m)</label>
+                  <label className="perfil-form-label">Altura (m) [1.00 a 2.50] *</label>
                   <input
                     type="number"
                     step="0.01"
-                    min="1.0"
-                    max="2.5"
+                    min="1.00"
+                    max="2.50"
                     className="perfil-form-input"
                     value={formEdit.altura || ''}
                     onChange={(e) => setFormEdit({ ...formEdit, altura: e.target.value })}
-                    placeholder="Ej: 1.80"
+                    placeholder="Ej: 1.80 (m)"
+                    required
                   />
                 </div>
-              </div>
-
-              {/* Campos estrictamente deshabilitados / Read-Only */}
-              <div className="perfil-form-group">
-                <label className="perfil-form-label">
-                  Email
-                  <span className="perfil-readonly-tag">🔒 Solo Lectura</span>
-                </label>
-                <input
-                  type="email"
-                  className="perfil-form-input"
-                  value={perfil.email}
-                  disabled
-                  readOnly
-                  title="El email de cuenta no puede modificarse por el atleta"
-                />
-              </div>
-
-              <div className="perfil-form-group">
-                <label className="perfil-form-label">
-                  Rol de Usuario
-                  <span className="perfil-readonly-tag">🔒 Solo Lectura</span>
-                </label>
-                <input
-                  type="text"
-                  className="perfil-form-input"
-                  value="Atleta"
-                  disabled
-                  readOnly
-                />
               </div>
 
               <div className="perfil-modal-actions">
@@ -393,6 +611,173 @@ export default function PerfilAtletaView() {
           </div>
         </div>
       )}
+
+      {/* ─── MODAL 2: Cambio Seguro de Correo Electrónico (Exige Contraseña Actual con Bcrypt) ─── */}
+      {modalEmail && (
+        <div className="perfil-modal-overlay" onClick={() => setModalEmail(false)}>
+          <div className="perfil-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="perfil-modal-title">Modificar Correo Electrónico</h3>
+            <p style={{ fontSize: '13px', color: '#b0b0c0', marginBottom: '18px', lineHeight: '1.4' }}>
+              Por motivos de seguridad, para modificar tu dirección de correo debes ingresar tu contraseña actual.
+              El nuevo correo requerirá ser verificado mediante código.
+            </p>
+
+            <form onSubmit={handleConfirmarCambioEmail}>
+              <div className="perfil-form-group">
+                <label className="perfil-form-label">Correo Actual</label>
+                <input
+                  type="email"
+                  className="perfil-form-input"
+                  value={perfil.email}
+                  disabled
+                  readOnly
+                  style={{ opacity: 0.6 }}
+                />
+              </div>
+
+              <div className="perfil-form-group">
+                <label className="perfil-form-label">Nuevo Correo Electrónico *</label>
+                <input
+                  type="email"
+                  className="perfil-form-input"
+                  placeholder="ejemplo@nuevoemail.com"
+                  value={formEmail.nuevo_email}
+                  onChange={(e) => setFormEmail({ ...formEmail, nuevo_email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="perfil-form-group">
+                <label className="perfil-form-label">
+                  <KeyRound size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                  Contraseña Actual de Confirmación *
+                </label>
+                <input
+                  type="password"
+                  className="perfil-form-input"
+                  placeholder="Tu contraseña actual"
+                  value={formEmail.password_actual}
+                  onChange={(e) => setFormEmail({ ...formEmail, password_actual: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="perfil-modal-actions">
+                <button
+                  type="button"
+                  className="perfil-btn-cancelar"
+                  onClick={() => setModalEmail(false)}
+                  disabled={loadingEmail}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="perfil-btn-guardar"
+                  disabled={loadingEmail}
+                >
+                  {loadingEmail ? 'Verificando...' : 'Confirmar Cambio'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL 3: Modificación de Contraseña Segura ─── */}
+      {modalPassword && (
+        <div className="perfil-modal-overlay" onClick={() => setModalPassword(false)}>
+          <div className="perfil-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h3 className="perfil-modal-title" style={{ margin: 0 }}>Modificar Contraseña</h3>
+              <button
+                type="button"
+                className="perfil-modal-close"
+                onClick={() => setModalPassword(false)}
+                title="Cerrar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p style={{ fontSize: '13px', color: '#b0b0c0', marginBottom: '18px', lineHeight: '1.4' }}>
+              Por motivos de seguridad, ingresa tu contraseña actual antes de establecer la nueva contraseña.
+            </p>
+
+            <form onSubmit={handleConfirmarCambioPassword}>
+              <div className="perfil-form-group">
+                <label className="perfil-form-label">
+                  <KeyRound size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                  Contraseña Actual *
+                </label>
+                <input
+                  type="password"
+                  className="perfil-form-input"
+                  placeholder="Tu contraseña actual"
+                  value={formPassword.password_actual}
+                  onChange={(e) => setFormPassword({ ...formPassword, password_actual: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="perfil-form-group">
+                <label className="perfil-form-label">
+                  <Lock size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                  Nueva Contraseña *
+                </label>
+                <input
+                  type="password"
+                  className="perfil-form-input"
+                  placeholder="Mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número"
+                  value={formPassword.nueva_password}
+                  onChange={(e) => setFormPassword({ ...formPassword, nueva_password: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="perfil-form-group">
+                <label className="perfil-form-label">
+                  <Lock size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                  Confirmar Nueva Contraseña *
+                </label>
+                <input
+                  type="password"
+                  className="perfil-form-input"
+                  placeholder="Repite la nueva contraseña"
+                  value={formPassword.confirm_password}
+                  onChange={(e) => setFormPassword({ ...formPassword, confirm_password: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="perfil-modal-actions">
+                <button
+                  type="button"
+                  className="perfil-btn-cancelar"
+                  onClick={() => setModalPassword(false)}
+                  disabled={loadingPassword}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="perfil-btn-guardar"
+                  disabled={loadingPassword}
+                >
+                  {loadingPassword ? 'Actualizando...' : 'Cambiar Contraseña'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Popup para validaciones y avisos */}
+      <ModalAlerta
+        isOpen={alertaModal.isOpen}
+        titulo={alertaModal.titulo}
+        mensaje={alertaModal.mensaje}
+        onClose={() => setAlertaModal({ isOpen: false, titulo: '', mensaje: '' })}
+      />
     </div>
   );
 }

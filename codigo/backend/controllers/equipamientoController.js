@@ -29,6 +29,23 @@ exports.getEquipamiento = async (req, res) => {
     }
 };
 
+// Expresiones regulares de validación para equipamiento
+const NOMBRE_MAQUINA_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.]{3,50}$/;
+const ALFANUMERICO_OPCIONAL_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\/]{1,100}$/;
+
+const validarImagen = (url) => {
+    if (!url || typeof url !== 'string' || !url.trim()) return true;
+    const trimmed = url.trim();
+    if (trimmed.startsWith('data:image/') || trimmed.startsWith('data:application/') || trimmed.startsWith('blob:')) return true;
+    if (trimmed.startsWith('/uploads/') || trimmed.startsWith('uploads/')) return true;
+    try {
+        const parsed = new URL(trimmed);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+        return trimmed.startsWith('/') || trimmed.startsWith('data:');
+    }
+};
+
 // ─── POST /api/equipamiento — Registrar nueva máquina / equipo ─────────────
 exports.createEquipamiento = async (req, res) => {
     const {
@@ -36,27 +53,68 @@ exports.createEquipamiento = async (req, res) => {
         marca,
         modelo,
         ubicacion,
-        imagen_url,
         estatus,
         fecha_adquisicion
     } = req.body;
 
-    if (!nombre || !nombre.trim()) {
+    const imagen_url = req.file ? `/uploads/${req.file.filename}` : req.body.imagen_url;
+
+    // Validación estricta del nombre (3 a 50 caracteres alfanuméricos válidos)
+    if (!nombre || typeof nombre !== 'string' || !NOMBRE_MAQUINA_REGEX.test(nombre.trim())) {
         return res.status(400).json({
             success: false,
-            message: 'El nombre de la máquina es obligatorio'
+            message: 'El nombre de la máquina debe tener entre 3 y 50 caracteres válidos sin caracteres extraños.'
+        });
+    }
+
+    // Validación de campos opcionales alfanuméricos
+    if (marca && typeof marca === 'string' && marca.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(marca.trim())) {
+        return res.status(400).json({
+            success: false,
+            message: 'El campo marca solo permite caracteres alfanuméricos válidos.'
+        });
+    }
+    if (modelo && typeof modelo === 'string' && modelo.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(modelo.trim())) {
+        return res.status(400).json({
+            success: false,
+            message: 'El campo modelo solo permite caracteres alfanuméricos válidos.'
+        });
+    }
+    if (ubicacion && typeof ubicacion === 'string' && ubicacion.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(ubicacion.trim())) {
+        return res.status(400).json({
+            success: false,
+            message: 'El campo ubicación solo permite caracteres alfanuméricos válidos.'
+        });
+    }
+
+    // Validación de URL o Base64 de imagen si se proporciona
+    if (imagen_url && !validarImagen(imagen_url)) {
+        return res.status(400).json({
+            success: false,
+            message: 'La imagen debe ser una URL válida (http/https) o una imagen en formato Base64 (data:image/...)'
         });
     }
 
     try {
         const estadoValido = (estatus === 'En Mantenimiento') ? 'En Mantenimiento' : 'Disponible';
+
         let fechaSql = null;
-        if (fecha_adquisicion && fecha_adquisicion.trim() !== '') {
-            // Acepta formato YYYY-MM-DD o fechas parseables
+        if (fecha_adquisicion && String(fecha_adquisicion).trim() !== '') {
             const d = new Date(fecha_adquisicion);
-            if (!isNaN(d.getTime())) {
-                fechaSql = d.toISOString().slice(0, 10);
+            if (isNaN(d.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La fecha de adquisición no tiene un formato válido'
+                });
             }
+            const anio = d.getFullYear();
+            if (anio < 2010 || anio > 2030) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El año de adquisición debe estar entre 2010 y 2030'
+                });
+            }
+            fechaSql = d.toISOString().slice(0, 10);
         }
 
         const [result] = await db.query(
@@ -65,10 +123,10 @@ exports.createEquipamiento = async (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
                 nombre.trim(),
-                marca ? marca.trim() : null,
-                modelo ? modelo.trim() : null,
-                ubicacion ? ubicacion.trim() : null,
-                imagen_url || null,
+                marca ? String(marca).trim() : null,
+                modelo ? String(modelo).trim() : null,
+                ubicacion ? String(ubicacion).trim() : null,
+                imagen_url ? String(imagen_url).trim() : null,
                 estadoValido,
                 fechaSql
             ]
@@ -99,48 +157,99 @@ exports.updateEquipamiento = async (req, res) => {
         marca,
         modelo,
         ubicacion,
-        imagen_url,
         estatus,
         fecha_adquisicion
     } = req.body;
 
+    const imagen_url = req.file ? `/uploads/${req.file.filename}` : req.body.imagen_url;
+
     try {
+        // Verificar si existe el registro antes de actualizar
+        const [existe] = await db.query('SELECT id FROM equipamiento WHERE id = ?', [id]);
+        if (!existe || existe.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'El equipamiento especificado no existe'
+            });
+        }
+
         const fields = [];
         const values = [];
 
         if (nombre !== undefined) {
+            if (!nombre || typeof nombre !== 'string' || !NOMBRE_MAQUINA_REGEX.test(nombre.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El nombre de la máquina debe tener entre 3 y 50 caracteres válidos sin caracteres extraños.'
+                });
+            }
             fields.push('nombre = ?');
             values.push(nombre.trim());
         }
         if (marca !== undefined) {
+            if (marca && typeof marca === 'string' && marca.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(marca.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El campo marca solo permite caracteres alfanuméricos válidos.'
+                });
+            }
             fields.push('marca = ?');
-            values.push(marca.trim());
+            values.push(marca ? String(marca).trim() : null);
         }
         if (modelo !== undefined) {
+            if (modelo && typeof modelo === 'string' && modelo.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(modelo.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El campo modelo solo permite caracteres alfanuméricos válidos.'
+                });
+            }
             fields.push('modelo = ?');
-            values.push(modelo.trim());
+            values.push(modelo ? String(modelo).trim() : null);
         }
         if (ubicacion !== undefined) {
+            if (ubicacion && typeof ubicacion === 'string' && ubicacion.trim() && !ALFANUMERICO_OPCIONAL_REGEX.test(ubicacion.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El campo ubicación solo permite caracteres alfanuméricos válidos.'
+                });
+            }
             fields.push('ubicacion = ?');
-            values.push(ubicacion.trim());
+            values.push(ubicacion ? String(ubicacion).trim() : null);
         }
         if (imagen_url !== undefined) {
+            if (imagen_url && !validarImagen(imagen_url)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La imagen debe ser una URL válida (http/https) o una imagen en formato Base64 (data:image/...)'
+                });
+            }
             fields.push('imagen_url = ?');
-            values.push(imagen_url);
+            values.push(imagen_url ? String(imagen_url).trim() : null);
         }
         if (estatus !== undefined) {
             fields.push('estatus = ?');
             values.push(estatus === 'En Mantenimiento' ? 'En Mantenimiento' : 'Disponible');
         }
         if (fecha_adquisicion !== undefined) {
-            fields.push('fecha_adquisicion = ?');
             let fechaSql = null;
-            if (fecha_adquisicion && fecha_adquisicion.trim() !== '') {
+            if (fecha_adquisicion && String(fecha_adquisicion).trim() !== '') {
                 const d = new Date(fecha_adquisicion);
-                if (!isNaN(d.getTime())) {
-                    fechaSql = d.toISOString().slice(0, 10);
+                if (isNaN(d.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'La fecha de adquisición no tiene un formato válido'
+                    });
                 }
+                const anio = d.getFullYear();
+                if (anio < 2010 || anio > 2030) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'El año de adquisición debe estar entre 2010 y 2030'
+                    });
+                }
+                fechaSql = d.toISOString().slice(0, 10);
             }
+            fields.push('fecha_adquisicion = ?');
             values.push(fechaSql);
         }
 
@@ -171,6 +280,14 @@ exports.updateEquipamiento = async (req, res) => {
 exports.deleteEquipamiento = async (req, res) => {
     const { id } = req.params;
     try {
+        const [existe] = await db.query('SELECT id FROM equipamiento WHERE id = ?', [id]);
+        if (!existe || existe.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'El equipamiento no existe o ya fue eliminado'
+            });
+        }
+
         await db.query('DELETE FROM equipamiento WHERE id = ?', [id]);
         res.json({ success: true, message: 'Máquina eliminada correctamente' });
     } catch (error) {

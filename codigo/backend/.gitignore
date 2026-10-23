@@ -16,3 +16,7 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Archivos subidos dinámicamente
+public/uploads/*
+!public/uploads/.gitkeep

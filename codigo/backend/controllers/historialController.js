@@ -12,6 +12,23 @@ exports.createHistorial = async (req, res) => {
             });
         }
 
+        // Validación estricta de números no negativos
+        if (
+            (peso_maximo !== undefined && Number(peso_maximo) < 0) ||
+            (kilos_totales !== undefined && Number(kilos_totales) < 0)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: 'Error: Ingrese un peso válido'
+            });
+        }
+        if (duracion_segundos !== undefined && Number(duracion_segundos) < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'La duración del entrenamiento no puede ser negativa.'
+            });
+        }
+
         const query = `
             INSERT INTO historial_entrenamientos 
             (id_usuario, id_rutina, fecha, duracion_segundos, peso_maximo, kilos_totales) 

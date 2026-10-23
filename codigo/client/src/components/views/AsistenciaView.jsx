@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getCurrentUser } from '../../features/authService';
-import { getAsistencias, createAsistencia } from '../../services/api';
+import { getAsistencias, createAsistencia, deleteAsistencia } from '../../services/api';
 import { useCalendarGrid, parseLocalDate } from '../../hooks/useCalendarGrid';
 import '../../styles/attendance.css';
 
@@ -24,9 +24,10 @@ function AsistenciaView() {
         paddingDays,
         todayStr,
         getWeeklyDays,
-        verificarAsistencia,
         irMesAnterior,
-        irMesSiguiente
+        irMesSiguiente,
+        canPrevMonth,
+        canNextMonth
     } = useCalendarGrid({ startOnMonday: true });
 
     const cargarAsistencias = useCallback(async () => {
@@ -48,7 +49,19 @@ function AsistenciaView() {
         cargarAsistencias();
     }, [cargarAsistencias]);
 
-    const attendanceMarkedToday = verificarAsistencia(todayStr, asistencias);
+    // ─── VERIFICACIÓN ROBUSTA DE ASISTENCIAS (Sin desfases) ───
+    const asistenciasFechasSet = new Set(
+        asistencias.map(a => {
+            const rawFecha = a.fecha || a.fecha_formateada || '';
+            return String(rawFecha).slice(0, 10);
+        })
+    );
+
+    const verificarAsistenciaLocal = (dateStr) => {
+        return asistenciasFechasSet.has(dateStr);
+    };
+
+    const attendanceMarkedToday = verificarAsistenciaLocal(todayStr);
 
     const handleAttendance = async (didAttend, targetDateStr = todayStr) => {
         if (!didAttend) {
@@ -65,6 +78,14 @@ function AsistenciaView() {
                 const fechaObj = parseLocalDate(targetDateStr);
                 const nombreDia = fechaObj ? new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric' }).format(fechaObj) : targetDateStr;
                 mostrarToast(`¡Asistencia registrada para el ${nombreDia}!`, 'success');
+                // Actualización inmediata del estado local para recalcular métricas semanal y mensual
+                const nuevaAsistencia = res.data || {
+                    id_asistencia: Date.now(),
+                    id_usuario: user.id,
+                    fecha: targetDateStr,
+                    fecha_formateada: targetDateStr
+                };
+                setAsistencias(prev => [nuevaAsistencia, ...prev]);
                 cargarAsistencias();
             }
         } catch (error) {
@@ -72,11 +93,51 @@ function AsistenciaView() {
         }
     };
 
-    const weeklyData = getWeeklyDays(asistencias);
-    const attendedDaysCount = weeklyData.filter(d => d.status === 'yes').length;
+    const handleRemoveAttendance = async (targetDateStr) => {
+        if (!user) return;
 
-    // Conteo del mes actual
-    const currentMonthAttended = days.filter(d => verificarAsistencia(d.dateStr, asistencias)).length;
+        // Guardar copia del estado previo para revertir si la API falla
+        const prevAsistencias = [...asistencias];
+
+        // Buscar registro para obtener id_asistencia si existe
+        const registro = asistencias.find(a => {
+            const rawFecha = a.fecha || a.fecha_formateada || '';
+            return String(rawFecha).slice(0, 10) === targetDateStr;
+        });
+
+        // 1. Actualización inmediata y reactiva del estado local:
+        // Descuenta el día de asistencias y recalcula automáticamente semana y mes
+        setAsistencias(prev => prev.filter(a => {
+            const rawFecha = a.fecha || a.fecha_formateada || '';
+            return String(rawFecha).slice(0, 10) !== targetDateStr;
+        }));
+
+        try {
+            const res = await deleteAsistencia({
+                id_asistencia: registro?.id_asistencia,
+                id_usuario: user.id,
+                fecha: targetDateStr
+            });
+
+            if (res?.success) {
+                const fechaObj = parseLocalDate(targetDateStr);
+                const nombreDia = fechaObj ? new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric' }).format(fechaObj) : targetDateStr;
+                mostrarToast(`Asistencia desmarcada para el ${nombreDia}`, 'info');
+                cargarAsistencias();
+            } else {
+                throw new Error(res?.message || 'No se pudo eliminar la asistencia');
+            }
+        } catch (error) {
+            console.error('Error al desmarcar asistencia:', error);
+            mostrarToast(error.message || 'Error al desmarcar asistencia', 'error');
+            // Revertir el estado local en caso de error
+            setAsistencias(prevAsistencias);
+        }
+    };
+
+    const weeklyData = getWeeklyDays(asistencias);
+    const attendedDaysCount = weeklyData.filter(d => verificarAsistenciaLocal(d.dateStr)).length;
+    const currentMonthAttended = days.filter(d => verificarAsistenciaLocal(d.dateStr)).length;
 
     return (
         <div style={{ width: '100%', padding: '20px', maxWidth: '650px', margin: '0 auto' }}>
@@ -89,26 +150,29 @@ function AsistenciaView() {
                     REGISTRO SEMANAL
                 </h2>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                    {weeklyData.map((item, index) => (
-                        <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '13px', color: item.dateStr === todayStr ? '#00d2ff' : 'var(--admin-muted)', fontWeight: item.dateStr === todayStr ? 'bold' : 'normal' }}>
-                                {item.dayName}
-                            </span>
-                            <span style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>{item.dayNumber}</span>
-                            {item.status === 'yes' ? (
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#8C58D3" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}>
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                            ) : item.status === 'no' ? (
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}>
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
-                            ) : (
-                                <span style={{ color: 'var(--admin-muted)', fontSize: '18px', lineHeight: '22px' }}>•</span>
-                            )}
-                        </div>
-                    ))}
+                    {weeklyData.map((item, index) => {
+                        const hasAttendedWeek = verificarAsistenciaLocal(item.dateStr);
+                        return (
+                            <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '13px', color: item.dateStr === todayStr ? '#00d2ff' : 'var(--admin-muted)', fontWeight: item.dateStr === todayStr ? 'bold' : 'normal' }}>
+                                    {item.dayName}
+                                </span>
+                                <span style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>{item.dayNumber}</span>
+                                {hasAttendedWeek ? (
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="#8C58D3" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}>
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                ) : item.dateStr < todayStr ? (
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}>
+                                        <line x1="18" y1="6" x2="6" y2="18" />
+                                        <line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg>
+                                ) : (
+                                    <span style={{ color: 'var(--admin-muted)', fontSize: '18px', lineHeight: '22px' }}>•</span>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
                 <p style={{ textAlign: 'center', color: 'var(--admin-muted)', fontSize: '13px', margin: '0 0 15px 0' }}>
                     Asistencia Semanal: <b style={{ color: '#00d2ff' }}>{attendedDaysCount}</b> de 7 días
@@ -117,32 +181,44 @@ function AsistenciaView() {
                     type="button"
                     className="btn-guardar"
                     onClick={() => {
-                        setDiaSeleccionadoConfirm(null);
-                        setShowConfirm(true);
+                        if (attendanceMarkedToday) {
+                            handleRemoveAttendance(todayStr);
+                        } else {
+                            setDiaSeleccionadoConfirm(null);
+                            setShowConfirm(true);
+                        }
                     }}
-                    disabled={attendanceMarkedToday}
                     style={{
                         width: '100%',
                         height: '42px',
-                        background: attendanceMarkedToday ? 'rgba(255,255,255,0.05)' : 'var(--admin-violet)',
-                        border: attendanceMarkedToday ? '1px solid var(--admin-muted)' : 'none',
-                        color: attendanceMarkedToday ? 'var(--admin-muted)' : 'white',
+                        background: attendanceMarkedToday ? 'rgba(231, 76, 60, 0.15)' : 'var(--admin-violet)',
+                        border: attendanceMarkedToday ? '1px solid #E74C3C' : 'none',
+                        color: attendanceMarkedToday ? '#E74C3C' : 'white',
                         borderRadius: '20px',
                         fontWeight: 'bold',
-                        cursor: attendanceMarkedToday ? 'default' : 'pointer'
+                        cursor: 'pointer'
                     }}
                 >
-                    {attendanceMarkedToday ? 'ASISTENCIA MARCADA HOY ✓' : 'MARCAR ASISTENCIA HOY'}
+                    {attendanceMarkedToday ? 'DESMARCAR ASISTENCIA HOY ✕' : 'MARCAR ASISTENCIA HOY'}
                 </button>
             </div>
 
-            {/* RESUMEN MENSUAL DINÁMICO (SIN DESFASE DE ZONA HORARIA) */}
+            {/* RESUMEN MENSUAL DINÁMICO */}
             <div style={{ background: 'var(--admin-card-soft)', padding: '20px', borderRadius: '14px', border: '1px solid rgba(140, 88, 211, 0.78)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                     <button
                         type="button"
                         onClick={irMesAnterior}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--admin-text)', fontSize: '20px', cursor: 'pointer', padding: '0 8px' }}
+                        disabled={!canPrevMonth}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: canPrevMonth ? 'var(--admin-text)' : 'rgba(255,255,255,0.2)',
+                            fontSize: '20px',
+                            cursor: canPrevMonth ? 'pointer' : 'not-allowed',
+                            padding: '0 8px',
+                            opacity: canPrevMonth ? 1 : 0.3
+                        }}
                     >
                         ❮
                     </button>
@@ -152,7 +228,16 @@ function AsistenciaView() {
                     <button
                         type="button"
                         onClick={irMesSiguiente}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--admin-text)', fontSize: '20px', cursor: 'pointer', padding: '0 8px' }}
+                        disabled={!canNextMonth}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: canNextMonth ? 'var(--admin-text)' : 'rgba(255,255,255,0.2)',
+                            fontSize: '20px',
+                            cursor: canNextMonth ? 'pointer' : 'not-allowed',
+                            padding: '0 8px',
+                            opacity: canNextMonth ? 1 : 0.3
+                        }}
                     >
                         ❯
                     </button>
@@ -163,7 +248,7 @@ function AsistenciaView() {
                     <span>Total días: {days.length}</span>
                 </div>
 
-                {/* CUADRÍCULA DEL MES CON ALINEACIÓN EXACTA LUNES A DOMINGO */}
+                {/* CUADRÍCULA DEL MES */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', justifyItems: 'center', marginBottom: '8px' }}>
                     {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
                         <div key={i} style={{ color: 'var(--admin-muted)', fontSize: '11px', fontWeight: 'bold' }}>{d}</div>
@@ -172,14 +257,18 @@ function AsistenciaView() {
                         <div key={`pad-${i}`} style={{ width: '32px', height: '32px' }} />
                     ))}
                     {days.map((d) => {
-                        const hasAttended = verificarAsistencia(d.dateStr, asistencias);
+                        const hasAttended = verificarAsistenciaLocal(d.dateStr);
                         return (
                             <div
                                 key={d.dateStr}
                                 onClick={() => {
-                                    if (d.dateStr <= todayStr && !hasAttended) {
-                                        setDiaSeleccionadoConfirm(d);
-                                        setShowConfirm(true);
+                                    if (d.dateStr <= todayStr) {
+                                        if (!hasAttended) {
+                                            setDiaSeleccionadoConfirm(d);
+                                            setShowConfirm(true);
+                                        } else {
+                                            handleRemoveAttendance(d.dateStr);
+                                        }
                                     }
                                 }}
                                 style={{
@@ -193,12 +282,12 @@ function AsistenciaView() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    cursor: d.dateStr <= todayStr && !hasAttended ? 'pointer' : 'default',
+                                    cursor: d.dateStr <= todayStr ? 'pointer' : 'default',
                                     fontSize: '12px',
                                     fontWeight: '600',
                                     color: hasAttended ? 'white' : (d.isToday ? '#00d2ff' : 'var(--admin-muted)')
                                 }}
-                                title={`${d.dayName} ${d.day} de ${monthTitle}${hasAttended ? ' (Asistencia registrada)' : ''}`}
+                                title={`${d.dayName} ${d.day} de ${monthTitle}${hasAttended ? ' (Asistencia registrada - Haz clic para desmarcar)' : ''}`}
                             >
                                 {hasAttended ? (
                                     <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}>
@@ -234,9 +323,6 @@ function AsistenciaView() {
                                 onClick={() => handleAttendance(true, diaSeleccionadoConfirm?.dateStr || todayStr)}
                                 style={{ flex: 1, background: 'rgba(46, 204, 113, 0.15)', border: '1px solid #2ECC71', color: '#2ECC71', borderRadius: '8px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', cursor: 'pointer' }}
                             >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}>
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
                                 Sí, asistí
                             </button>
                             <button
@@ -245,10 +331,6 @@ function AsistenciaView() {
                                 onClick={() => handleAttendance(false)}
                                 style={{ flex: 1, background: 'rgba(231, 76, 60, 0.15)', border: '1px solid #E74C3C', color: '#E74C3C', borderRadius: '8px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', cursor: 'pointer' }}
                             >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}>
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
                                 No, cancelar
                             </button>
                         </div>

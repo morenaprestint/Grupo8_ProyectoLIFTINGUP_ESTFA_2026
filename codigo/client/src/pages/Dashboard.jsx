@@ -21,7 +21,9 @@ import {
   createRutina,
   updateRutina,
   deleteRutina,
-  getAsistencias
+  getAsistencias,
+  formatearFechaEspanol,
+  formatearAFechaISO
 } from '../services/api.js'
 
 import UsuariosTable from '../components/UsuariosTable.jsx'
@@ -30,6 +32,7 @@ import AdminForm from '../components/AdminForm.jsx'
 import UsuarioModal from '../components/UsuarioModal.jsx'
 import EquipamientoView from '../views/EquipamientoView.jsx'
 import PerfilAdminView from '../views/PerfilAdminView.jsx'
+import ModalAlerta from '../components/ModalAlerta.jsx'
 
 import '../styles/adminDashboard.css'
 
@@ -38,17 +41,23 @@ const FORM_USUARIO_INICIAL = {
   apellido: '',
   email: '',
   password: '',
+  fecha_nacimiento: '',
   peso: '',
   altura: '',
   nivel_entrenamiento: 'Principiante',
-  objetivo: 'Ganar masa muscular'
+  objetivo: 'Ganar masa muscular',
+  es_atleta: 1,
+  es_admin: 0
 }
 
 const FORM_ADMIN_INICIAL = {
   nombre: '',
   apellido: '',
   email: '',
-  password: ''
+  password: '',
+  fecha_nacimiento: '',
+  es_atleta: 0,
+  es_admin: 1
 }
 
 const FORM_EJERCICIO_INICIAL = {
@@ -67,7 +76,7 @@ const FORM_RUTINA_INICIAL = {
 const GRUPOS_MUSCULARES = [
   'Pecho',
   'Espalda',
-  'Pierna',
+  'Pierna / Glúteo',
   'Hombro',
   'Bíceps',
   'Tríceps',
@@ -76,6 +85,13 @@ const GRUPOS_MUSCULARES = [
   'Cardio',
   'Cuerpo Completo'
 ]
+
+const formatearGrupoMuscular = (g) => {
+  if (!g) return 'General';
+  const str = String(g).trim();
+  if (['pierna', 'piernas'].includes(str.toLowerCase())) return 'Pierna / Glúteo';
+  return str;
+};
 
 function Toast({ msg, tipo }) {
   if (!msg) return null
@@ -117,6 +133,12 @@ function AdminDashboard({ vistaInicial = 'home' }) {
 
   const [formUsuario, setFormUsuario] = useState(FORM_USUARIO_INICIAL)
   const [formAdmin, setFormAdmin] = useState(FORM_ADMIN_INICIAL)
+  const [backupAtleta, setBackupAtleta] = useState({
+    peso: '',
+    altura: '',
+    nivel_entrenamiento: 'Principiante',
+    objetivo: 'Ganar masa muscular'
+  })
 
   // Asistencia
   const [asistenciasList, setAsistenciasList] = useState([])
@@ -159,6 +181,12 @@ function AdminDashboard({ vistaInicial = 'home' }) {
         tipo: 'success'
       })
     }, 3500)
+  }
+
+  // Modal Popup de validación y errores con estilo neón oscuro
+  const [alertaModal, setAlertaModal] = useState({ isOpen: false, titulo: '', mensaje: '' })
+  const mostrarModalError = (mensaje, titulo = 'Acción no permitida') => {
+    setAlertaModal({ isOpen: true, titulo, mensaje })
   }
 
   // Cargar Usuarios
@@ -265,10 +293,54 @@ function AdminDashboard({ vistaInicial = 'home' }) {
 
   const handleChangeUsuario = (e) => {
     const { name, value } = e.target
-    setFormUsuario(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    if (name === 'es_atleta') {
+      const nuevoEsAtleta = Number(value) === 1 || value === true
+      if (!nuevoEsAtleta) {
+        // Desmarcó Atleta: respaldar métricas físicas actuales y limpiarlas en el formulario
+        setBackupAtleta({
+          peso: formUsuario.peso ?? '',
+          altura: formUsuario.altura ?? '',
+          nivel_entrenamiento: formUsuario.nivel_entrenamiento || 'Principiante',
+          objetivo: formUsuario.objetivo || 'Ganar masa muscular'
+        })
+        setFormUsuario(prev => ({
+          ...prev,
+          es_atleta: 0,
+          peso: '',
+          altura: '',
+          nivel_entrenamiento: '',
+          objetivo: ''
+        }))
+        return
+      } else {
+        // Volvió a marcar Atleta: restaurar métricas físicas previamente respaldadas
+        setFormUsuario(prev => ({
+          ...prev,
+          es_atleta: 1,
+          peso: backupAtleta.peso !== '' ? backupAtleta.peso : (prev.peso || ''),
+          altura: backupAtleta.altura !== '' ? backupAtleta.altura : (prev.altura || ''),
+          nivel_entrenamiento: backupAtleta.nivel_entrenamiento || prev.nivel_entrenamiento || 'Principiante',
+          objetivo: backupAtleta.objetivo || prev.objetivo || 'Ganar masa muscular'
+        }))
+        return
+      }
+    }
+
+    let valorAjustado = value;
+    if (name === 'peso' && typeof value === 'string') {
+      valorAjustado = value.replace(',', '.');
+    }
+
+    setFormUsuario(prev => {
+      const updated = {
+        ...prev,
+        [name]: valorAjustado
+      }
+      if (['peso', 'altura', 'nivel_entrenamiento', 'objetivo'].includes(name)) {
+        setBackupAtleta(b => ({ ...b, [name]: valorAjustado }))
+      }
+      return updated
+    })
   }
 
   const handleChangeAdmin = (e) => {
@@ -295,45 +367,156 @@ function AdminDashboard({ vistaInicial = 'home' }) {
   const abrirCrear = () => {
     setFormUsuario(FORM_USUARIO_INICIAL)
     setFormAdmin(FORM_ADMIN_INICIAL)
+    setBackupAtleta({
+      peso: '',
+      altura: '',
+      nivel_entrenamiento: 'Principiante',
+      objetivo: 'Ganar masa muscular'
+    })
     setVista('crear')
   }
 
   const abrirModalEditar = (usuario) => {
     setUsuarioEditando(usuario)
+    setBackupAtleta({
+      peso: usuario.peso ?? '',
+      altura: usuario.altura ?? '',
+      nivel_entrenamiento: usuario.nivel_entrenamiento || 'Principiante',
+      objetivo: usuario.objetivo || 'Ganar masa muscular'
+    })
     setFormUsuario({
       nombre: usuario.nombre || '',
       apellido: usuario.apellido || '',
       email: usuario.email || '',
-      password: usuario.password || '',
-      peso: usuario.peso || '',
-      altura: usuario.altura || '',
+      password: '',
+      peso: usuario.peso ?? '',
+      altura: usuario.altura ?? '',
       nivel_entrenamiento:
         usuario.nivel_entrenamiento ||
         'Principiante',
       objetivo:
         usuario.objetivo ||
-        'Ganar masa muscular'
+        'Ganar masa muscular',
+      fecha_nacimiento: formatearAFechaISO(usuario.fecha_nacimiento),
+      es_admin: Number(usuario.es_admin) === 1 ? 1 : 0,
+      es_atleta: Number(usuario.es_atleta) === 1 ? 1 : 0,
+      activo: usuario.activo ?? 1
     })
     setModalEditarAbierto(true)
   }
 
   const guardarNuevoRegistro = async () => {
     setGuardando(true)
+    const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/
     try {
       if (tipoAlta === 'admin') {
         if (!formAdmin.nombre || !formAdmin.apellido || !formAdmin.email || !formAdmin.password) {
-          mostrarToast('Por favor completa todos los campos del Administrador', 'error')
+          mostrarModalError('Por favor completa todos los campos del Administrador')
+          setGuardando(false)
           return
+        }
+        if (!EMAIL_REGEX.test(formAdmin.email.trim())) {
+          mostrarModalError('El correo electrónico debe ser una cuenta válida de Gmail (@gmail.com)')
+          setGuardando(false)
+          return
+        }
+        if (!PASSWORD_REGEX.test(formAdmin.password)) {
+          mostrarToast('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número', 'error')
+          return
+        }
+        if (formAdmin.fecha_nacimiento) {
+          const fecha = new Date(formAdmin.fecha_nacimiento);
+          const hoy = new Date();
+          let edad = hoy.getFullYear() - fecha.getFullYear();
+          const diffMeses = hoy.getMonth() - fecha.getMonth();
+          if (diffMeses < 0 || (diffMeses === 0 && hoy.getDate() < fecha.getDate())) {
+            edad--;
+          }
+          if (edad < 14) {
+            mostrarToast('La edad mínima permitida es de 14 años cumplidos', 'error');
+            return;
+          }
+          if (edad > 100) {
+            mostrarToast('La fecha de nacimiento no es válida (edad máxima 100 años)', 'error');
+            return;
+          }
         }
         await createAdmin(formAdmin)
         mostrarToast('Administrador creado con éxito', 'success')
       } else {
         if (!formUsuario.nombre || !formUsuario.apellido || !formUsuario.email) {
-          mostrarToast('Nombre, apellido y email son requeridos', 'error')
+          mostrarModalError('Nombre, apellido y email son requeridos')
+          setGuardando(false)
           return
         }
+
+        if (!EMAIL_REGEX.test(formUsuario.email.trim())) {
+          mostrarModalError('El correo electrónico debe ser una cuenta válida de Gmail (@gmail.com)')
+          setGuardando(false)
+          return
+        }
+
+        if (formUsuario.password && formUsuario.password.trim()) {
+          if (!PASSWORD_REGEX.test(formUsuario.password)) {
+            mostrarToast('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número', 'error')
+            return
+          }
+        }
+
+        // Validación obligatoria de edad mínima (14 años)
+        if (formUsuario.fecha_nacimiento) {
+          const fecha = new Date(formUsuario.fecha_nacimiento);
+          const hoy = new Date();
+          let edad = hoy.getFullYear() - fecha.getFullYear();
+          const diffMeses = hoy.getMonth() - fecha.getMonth();
+          if (diffMeses < 0 || (diffMeses === 0 && hoy.getDate() < fecha.getDate())) {
+            edad--;
+          }
+          if (edad < 14) {
+            mostrarToast('La edad mínima permitida es de 14 años cumplidos', 'error');
+            return;
+          }
+          if (edad > 100) {
+            mostrarToast('La fecha de nacimiento no es válida (edad máxima 100 años)', 'error');
+            return;
+          }
+        }
+
+        // Validación obligatoria de campos físicos al asignar rol Atleta
+        const esAtletaNuevo = formUsuario.es_atleta === 1 || formUsuario.es_atleta === true || formUsuario.es_atleta === '1';
+        if (esAtletaNuevo) {
+          if (
+            formUsuario.peso === undefined || formUsuario.peso === null || String(formUsuario.peso).trim() === '' ||
+            formUsuario.altura === undefined || formUsuario.altura === null || String(formUsuario.altura).trim() === '' ||
+            !formUsuario.nivel_entrenamiento || String(formUsuario.nivel_entrenamiento).trim() === '' ||
+            !formUsuario.objetivo || String(formUsuario.objetivo).trim() === ''
+          ) {
+            mostrarToast('Debe completar los datos físicos del atleta (peso, altura, nivel y objetivo)', 'error');
+            return;
+          }
+        }
+
+        // Validación estricta de altura (1.00 - 2.50) y peso (40 - 200 kg)
+        if (formUsuario.altura !== undefined && formUsuario.altura !== null && formUsuario.altura !== '') {
+          const alt = Number(formUsuario.altura);
+          if (isNaN(alt) || alt < 1.00 || alt > 2.50) {
+            mostrarToast('La altura debe estar estrictamente entre 1.00 y 2.50 metros', 'error');
+            return;
+          }
+        }
+        if (formUsuario.peso !== undefined && formUsuario.peso !== null && formUsuario.peso !== '') {
+          const pesStr = String(formUsuario.peso).replace(',', '.');
+          const pes = Number(pesStr);
+          if (isNaN(pes) || pes < 40 || pes > 200) {
+            mostrarToast('Error: Ingrese un peso válido (el peso corporal debe estar estrictamente entre 40 kg y 200 kg)', 'error');
+            return;
+          }
+        }
+
         const payload = {
           ...formUsuario,
+          peso: formUsuario.peso ? Number(String(formUsuario.peso).replace(',', '.')) : null,
           password: formUsuario.password || generarPassword(formUsuario.nombre, formUsuario.apellido),
           id_admin: admin?.id || null
         }
@@ -355,20 +538,95 @@ function AdminDashboard({ vistaInicial = 'home' }) {
   const guardarEdicionUsuario = async () => {
     if (!usuarioEditando) return
     const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/
+
+    if (formUsuario.email && !EMAIL_REGEX.test(formUsuario.email.trim())) {
+      mostrarModalError('El correo electrónico debe ser una cuenta válida de Gmail (@gmail.com)')
+      return
+    }
+
     if (formUsuario.password && formUsuario.password.trim()) {
       if (!PASSWORD_REGEX.test(formUsuario.password)) {
         mostrarToast('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número', 'error')
         return
       }
-    } else {
-      mostrarToast('La contraseña es obligatoria al editar el usuario', 'error')
-      return
     }
+
+    // Validación obligatoria de edad mínima (14 años)
+    if (formUsuario.fecha_nacimiento) {
+      const fecha = new Date(formUsuario.fecha_nacimiento);
+      const hoy = new Date();
+      let edad = hoy.getFullYear() - fecha.getFullYear();
+      const diffMeses = hoy.getMonth() - fecha.getMonth();
+      if (diffMeses < 0 || (diffMeses === 0 && hoy.getDate() < fecha.getDate())) {
+        edad--;
+      }
+      if (edad < 14) {
+        mostrarToast('La edad mínima permitida es de 14 años cumplidos', 'error');
+        return;
+      }
+      if (edad > 100) {
+        mostrarToast('La fecha de nacimiento no es válida (edad máxima 100 años)', 'error');
+        return;
+      }
+    }
+
+    // Validación obligatoria de campos físicos al asignar rol Atleta
+    const esAtleta = formUsuario.es_atleta === 1 || formUsuario.es_atleta === true || formUsuario.es_atleta === '1';
+    if (esAtleta) {
+      if (
+        formUsuario.peso === undefined || formUsuario.peso === null || String(formUsuario.peso).trim() === '' ||
+        formUsuario.altura === undefined || formUsuario.altura === null || String(formUsuario.altura).trim() === '' ||
+        !formUsuario.nivel_entrenamiento || String(formUsuario.nivel_entrenamiento).trim() === '' ||
+        !formUsuario.objetivo || String(formUsuario.objetivo).trim() === ''
+      ) {
+        mostrarToast('Debe completar los datos físicos del atleta (peso, altura, nivel y objetivo)', 'error');
+        return;
+      }
+
+      const alt = Number(formUsuario.altura);
+      if (isNaN(alt) || alt < 1.00 || alt > 2.50) {
+        mostrarToast('La altura debe estar estrictamente entre 1.00 y 2.50 metros', 'error');
+        return;
+      }
+
+      const pesStr = String(formUsuario.peso).replace(',', '.');
+      const pes = Number(pesStr);
+      if (isNaN(pes) || pes < 40 || pes > 200) {
+        mostrarToast('Error: Ingrese un peso válido (el peso corporal debe estar estrictamente entre 40 kg y 200 kg)', 'error');
+        return;
+      }
+    }
+
     setGuardando(true)
     try {
       const idUsuario = usuarioEditando.id ?? usuarioEditando.id_usuario
-      await updateUsuario(idUsuario, formUsuario)
-      mostrarToast('Usuario actualizado correctamente', 'success')
+      // Persistir fecha de nacimiento previa si no se modificó explícitamente
+      const fechaNacFinal = formatearAFechaISO(formUsuario.fecha_nacimiento) || formatearAFechaISO(usuarioEditando.fecha_nacimiento)
+      const payload = {
+        ...formUsuario,
+        peso: esAtleta && formUsuario.peso ? Number(String(formUsuario.peso).replace(',', '.')) : null,
+        fecha_nacimiento: fechaNacFinal
+      }
+
+      const res = await updateUsuario(idUsuario, payload, admin?.id, admin?.email)
+      if (res?.requiereRevalidarSesion) {
+        mostrarToast('Has solicitado cambiar tu correo electrónico. Por seguridad tu sesión se cerrará. Verifica tu nuevo correo e inicia sesión nuevamente.', 'info')
+        setTimeout(() => {
+          logout()
+          localStorage.clear()
+          navigate('/login')
+        }, 2000)
+        return
+      }
+
+      if (res?.emailPendiente) {
+        mostrarToast('Se envió un código de verificación de 6 dígitos al nuevo correo. El cambio se aplicará al confirmarlo.', 'info')
+      } else if (res?.emailPendienteCancelado) {
+        mostrarToast('Solicitud de cambio de correo cancelada. Se mantiene el correo actual.', 'info')
+      } else {
+        mostrarToast('Usuario actualizado correctamente', 'success')
+      }
       setModalEditarAbierto(false)
       setUsuarioEditando(null)
       cargarUsuarios()
@@ -382,10 +640,15 @@ function AdminDashboard({ vistaInicial = 'home' }) {
 
   const handleEliminarUsuario = async () => {
     if (!confirmEliminar) return
+    const idUsuario = confirmEliminar.id ?? confirmEliminar.id_usuario
+    if (String(idUsuario) === String(admin?.id) || (admin?.email && confirmEliminar.email?.toLowerCase() === admin.email.toLowerCase())) {
+      mostrarToast('Por seguridad, no puedes eliminar tu propia cuenta de administrador.', 'error')
+      setConfirmEliminar(null)
+      return
+    }
     setEliminando(true)
     try {
-      const idUsuario = confirmEliminar.id ?? confirmEliminar.id_usuario
-      await deleteUsuario(idUsuario)
+      await deleteUsuario(idUsuario, admin?.id, admin?.email)
       setUsuarios(prev => prev.filter(u => (u.id ?? u.id_usuario) !== idUsuario))
       mostrarToast(`${confirmEliminar.nombre} ${confirmEliminar.apellido} fue eliminado`, 'success')
     } catch (error) {
@@ -413,6 +676,19 @@ function AdminDashboard({ vistaInicial = 'home' }) {
     if (!formEjercicio.nombre.trim()) {
       return mostrarToast('El nombre del ejercicio es obligatorio', 'error')
     }
+
+    // Validación estricta de URL web en GIF demostrativo
+    if (formEjercicio.gif && formEjercicio.gif.trim()) {
+      try {
+        const parsed = new URL(formEjercicio.gif.trim())
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          return mostrarToast('El enlace del GIF demostrativo debe comenzar con http:// o https://', 'error')
+        }
+      } catch {
+        return mostrarToast('El enlace del GIF demostrativo debe ser una URL web válida (ej. https://ejemplo.com/ejercicio.gif)', 'error')
+      }
+    }
+
     setGuardando(true)
     try {
       if (ejercicioEditando) {
@@ -463,14 +739,14 @@ function AdminDashboard({ vistaInicial = 'home' }) {
     setRutinaEjercicios(
       r.ejercicios && r.ejercicios.length > 0
         ? r.ejercicios.map(e => ({
-            id_ejercicio: e.id_ejercicio,
-            nombre: e.nombre,
-            grupo_muscular: e.grupo_muscular,
-            gif: e.gif,
-            series: e.series || 3,
-            repeticiones: e.repeticiones || 12,
-            peso: e.peso || 0
-          }))
+          id_ejercicio: e.id_ejercicio,
+          nombre: e.nombre,
+          grupo_muscular: e.grupo_muscular,
+          gif: e.gif,
+          series: e.series || 3,
+          repeticiones: e.repeticiones || 12,
+          peso: e.peso || 0
+        }))
         : []
     )
     setModalCrearRutina(true)
@@ -496,6 +772,40 @@ function AdminDashboard({ vistaInicial = 'home' }) {
   }
 
   const actualizarMetricaRutinaDraft = (index, field, value) => {
+    if (value === '') {
+      setRutinaEjercicios(prev => {
+        const copy = [...prev]
+        copy[index][field] = ''
+        return copy
+      })
+      return
+    }
+
+    const numVal = Number(value)
+    if (isNaN(numVal) || numVal < 0) {
+      mostrarModalError('Acción no permitida: el valor ingresado es inválido. Ingrese un valor numérico mayor o igual a 0.')
+      return
+    }
+
+    if (field === 'series') {
+      if (numVal < 1 || numVal > 5) {
+        mostrarModalError('Acción no permitida: el valor ingresado es inválido. Las series deben estar estrictamente entre 1 y 5.')
+        return
+      }
+    }
+
+    if (field === 'repeticiones') {
+      if (numVal < 1 || numVal > 15) {
+        mostrarModalError('Acción no permitida: el valor ingresado es inválido. Las repeticiones deben estar estrictamente entre 1 y 15.')
+        return
+      }
+    }
+
+    if (field === 'peso' && numVal > 350) {
+      mostrarModalError('Acción no permitida: el valor ingresado es inválido. El peso máximo permitido es de 350 kg.')
+      return
+    }
+
     setRutinaEjercicios(prev => {
       const copy = [...prev]
       copy[index][field] = value
@@ -503,17 +813,26 @@ function AdminDashboard({ vistaInicial = 'home' }) {
     })
   }
 
-  const quitarEjercicioRutinaDraft = (index) => {
-    setRutinaEjercicios(prev => prev.filter((_, i) => i !== index))
-  }
-
   const handleGuardarRutinaPrearmada = async () => {
     if (!formRutina.nombre.trim()) {
-      return mostrarToast('El nombre de la rutina es obligatorio', 'error')
+      return mostrarModalError('El nombre de la rutina es obligatorio', 'Campo requerido')
     }
     if (rutinaEjercicios.length === 0) {
-      return mostrarToast('Agrega al menos un ejercicio a la rutina', 'error')
+      return mostrarModalError('Agrega al menos un ejercicio a la rutina', 'Ejercicios requeridos')
     }
+
+    const tieneMetricaInvalida = rutinaEjercicios.some(e => {
+      const p = Number(e.peso)
+      const s = Number(e.series)
+      const r = Number(e.repeticiones)
+      return isNaN(p) || p < 0 || p > 350 || isNaN(s) || s < 1 || s > 5 || isNaN(r) || r < 1 || r > 15
+    })
+
+    if (tieneMetricaInvalida) {
+      mostrarModalError('Acción no permitida: el valor ingresado es inválido. Verifique que los valores cumplan: Series (1-5), Repeticiones (1-15) y Peso (0-350 kg).')
+      return
+    }
+    // ...
 
     setGuardando(true)
     try {
@@ -605,7 +924,9 @@ function AdminDashboard({ vistaInicial = 'home' }) {
   const ejerciciosFiltrados = ejerciciosList.filter(e => {
     const texto = busquedaEjercicio.trim().toLowerCase()
     const coincideTexto = !texto || e.nombre?.toLowerCase().includes(texto) || e.descripcion?.toLowerCase().includes(texto)
-    const coincideGrupo = !filtroGrupoEjercicio || e.grupo_muscular === filtroGrupoEjercicio
+    const coincideGrupo = !filtroGrupoEjercicio || 
+      e.grupo_muscular === filtroGrupoEjercicio ||
+      (filtroGrupoEjercicio === 'Pierna / Glúteo' && ['pierna', 'piernas'].includes((e.grupo_muscular || '').toLowerCase()))
     return coincideTexto && coincideGrupo
   })
 
@@ -965,9 +1286,18 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                 ) : (
                   <UsuariosTable
                     usuarios={usuariosFiltrados}
+                    currentUserId={admin?.id}
+                    currentUserEmail={admin?.email}
                     onVer={setModalVer}
                     onEdit={abrirModalEditar}
-                    onDelete={setConfirmEliminar}
+                    onDelete={(u) => {
+                      const idUsuario = u.id ?? u.id_usuario
+                      if (String(idUsuario) === String(admin?.id) || (admin?.email && u.email?.toLowerCase() === admin.email.toLowerCase())) {
+                        mostrarToast('Por seguridad, no puedes eliminar tu propia cuenta de administrador.', 'error')
+                        return
+                      }
+                      setConfirmEliminar(u)
+                    }}
                   />
                 )}
               </section>
@@ -998,10 +1328,22 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <input
                     type="date"
+                    min="2025-01-01"
+                    max="2027-12-31"
                     value={filtroFechaAsistencia}
-                    onChange={(e) => setFiltroFechaAsistencia(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val) {
+                        const anio = parseInt(val.slice(0, 4), 10)
+                        if (anio < 2025 || anio > 2027) {
+                          mostrarToast('Rango de fecha permitido: 2025 a 2027', 'error')
+                          return
+                        }
+                      }
+                      setFiltroFechaAsistencia(val)
+                    }}
                     className="input-filtro-fecha"
-                    title="Filtrar por fecha específica"
+                    title="Filtrar por fecha específica (2025 a 2027)"
                   />
                   {filtroFechaAsistencia && (
                     <button
@@ -1139,7 +1481,7 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                           </div>
                         </div>
                         {ej.grupo_muscular && (
-                          <span className="ejercicio-grupo">{ej.grupo_muscular}</span>
+                          <span className="ejercicio-grupo">{formatearGrupoMuscular(ej.grupo_muscular)}</span>
                         )}
                         <p className="ejercicio-descripcion">
                           {ej.descripcion || 'Sin descripción detallada.'}
@@ -1254,7 +1596,7 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                                 )}
                                 <div className="rutina-ejercicio-info">
                                   <span className="rutina-ejercicio-nombre-text">{ej.nombre}</span>
-                                  <span className="rutina-ejercicio-grupo">{ej.grupo_muscular || 'General'}</span>
+                                  <span className="rutina-ejercicio-grupo">{formatearGrupoMuscular(ej.grupo_muscular)}</span>
                                 </div>
                               </div>
                               <span className="ejercicio-row-metricas">
@@ -1334,6 +1676,7 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                     handleChange={handleChangeUsuario}
                     generarPassword={generarPassword}
                     isEdit={false}
+                    esMismoAdmin={false}
                   />
                 )}
 
@@ -1386,6 +1729,12 @@ function AdminDashboard({ vistaInicial = 'home' }) {
             handleChange={handleChangeUsuario}
             generarPassword={generarPassword}
             isEdit
+            esMismoAdmin={Boolean(
+              usuarioEditando && (
+                String(usuarioEditando.id ?? usuarioEditando.id_usuario) === String(admin?.id) ||
+                (admin?.email && usuarioEditando.email?.toLowerCase() === admin.email.toLowerCase())
+              )
+            )}
           />
         </UsuarioModal>
 
@@ -1400,25 +1749,47 @@ function AdminDashboard({ vistaInicial = 'home' }) {
         >
           {modalVer && (
             <div className="detalle-container">
-              {[
-                ['ID', modalVer.id ?? modalVer.id_usuario],
-                ['Nombre completo', `${modalVer.nombre} ${modalVer.apellido}`],
-                ['Email', modalVer.email],
-                ['Contraseña', modalVer.password ? '••••••' : '—'],
-                ['Peso', modalVer.peso ? `${modalVer.peso} kg` : '—'],
-                ['Altura', modalVer.altura ? `${modalVer.altura} m` : '—'],
-                ['Nivel', modalVer.nivel_entrenamiento || '—'],
-                ['Objetivo', modalVer.objetivo || '—'],
-                ['Estado', modalVer.estado || 'Activo'],
-                modalVer.rol !== 'admin'
-                  ? ['Estado Email', modalVer.email_verificado === 1 ? 'Verificado' : 'Pendiente']
-                  : null
-              ].filter(Boolean).map(([label, valor]) => (
-                <div key={label} className="detalle-row">
-                  <span className="detalle-label">{label}:</span>
-                  <span className="detalle-valor">{valor}</span>
-                </div>
-              ))}
+              {(() => {
+                const esAdminPuro = (Number(modalVer.es_admin) === 1 || modalVer.rol === 'admin') && !(Number(modalVer.es_atleta) === 1);
+                const rolTexto = esAdminPuro
+                  ? 'Administrador'
+                  : (Number(modalVer.es_admin) === 1 && Number(modalVer.es_atleta) === 1 ? 'Doble Rol (Admin y Atleta)' : 'Atleta');
+
+                const filas = [
+                  ['ID', modalVer.id ?? modalVer.id_usuario],
+                  ['Nombre completo', `${modalVer.nombre || ''} ${modalVer.apellido || ''}`.trim() || 'No especificado'],
+                  ['Email', modalVer.email || 'No especificado'],
+                  ...(modalVer.email_pendiente ? [['Email pendiente de confirmación', modalVer.email_pendiente]] : []),
+                  ['Rol en el sistema', rolTexto],
+                  ['Estado de la cuenta', modalVer.estado || (modalVer.activo === 0 ? 'Inactivo' : 'Activo')],
+                  ['Estado Email', Number(modalVer.email_verificado) === 1 ? 'Verificado' : 'Pendiente']
+                ];
+
+                if (!esAdminPuro) {
+                  filas.push(
+                    ['Fecha de Nacimiento', formatearFechaEspanol(modalVer.fecha_nacimiento)],
+                    ['Peso corporal', modalVer.peso != null && modalVer.peso !== '' ? `${modalVer.peso} kg` : 'No especificado'],
+                    ['Altura', modalVer.altura != null && modalVer.altura !== '' ? `${modalVer.altura} m` : 'No especificado'],
+                    ['Nivel', modalVer.nivel_entrenamiento || 'No especificado'],
+                    ['Objetivo', modalVer.objetivo || 'No especificado']
+                  );
+                } else {
+                  filas.push(
+                    ['Fecha de Nacimiento', formatearFechaEspanol(modalVer.fecha_nacimiento)],
+                    ['Peso corporal', 'No especificado'],
+                    ['Altura', 'No especificado'],
+                    ['Nivel', 'No especificado'],
+                    ['Objetivo', 'No especificado']
+                  );
+                }
+
+                return filas.map(([label, valor]) => (
+                  <div key={label} className="detalle-row">
+                    <span className="detalle-label">{label}:</span>
+                    <span className="detalle-valor">{valor}</span>
+                  </div>
+                ));
+              })()}
             </div>
           )}
         </UsuarioModal>
@@ -1504,6 +1875,7 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                 <button
                   type="button"
                   className="btn-cancelar"
+                  disabled={guardando}
                   onClick={() => {
                     setModalCrearEjercicio(false)
                     setEjercicioEditando(null)
@@ -1600,7 +1972,7 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                       <option value="">Selecciona un ejercicio...</option>
                       {ejerciciosList.map(e => (
                         <option key={e.id_ejercicio} value={e.id_ejercicio}>
-                          {e.nombre} ({e.grupo_muscular || 'Gral'})
+                          {e.nombre} ({formatearGrupoMuscular(e.grupo_muscular)})
                         </option>
                       ))}
                     </select>
@@ -1642,7 +2014,7 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                               <span style={{ color: 'white', fontWeight: '600', fontSize: '13px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {ej.nombre}
                               </span>
-                              <span style={{ color: '#a0a0a0', fontSize: '11px' }}>{ej.grupo_muscular || 'Gral'}</span>
+                              <span style={{ color: '#a0a0a0', fontSize: '11px' }}>{formatearGrupoMuscular(ej.grupo_muscular)}</span>
                             </div>
                           </div>
                           <button
@@ -1656,32 +2028,42 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                         </div>
                         <div className="rutina-draft-metrics-grid">
                           <div>
-                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Series</label>
+                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Series (1-5)</label>
                             <input
                               type="number"
+                              min="1"
+                              max="5"
                               className="input-modal"
                               style={{ minHeight: '32px', padding: '4px 8px', marginBottom: 0 }}
                               value={ej.series}
+                              onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                               onChange={(e) => actualizarMetricaRutinaDraft(index, 'series', e.target.value)}
                             />
                           </div>
                           <div>
-                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Reps</label>
+                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Reps (1-15)</label>
                             <input
                               type="number"
+                              min="1"
+                              max="15"
                               className="input-modal"
                               style={{ minHeight: '32px', padding: '4px 8px', marginBottom: 0 }}
                               value={ej.repeticiones}
+                              onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                               onChange={(e) => actualizarMetricaRutinaDraft(index, 'repeticiones', e.target.value)}
                             />
                           </div>
                           <div>
-                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Peso (kg)</label>
+                            <label style={{ fontSize: '10px', color: 'var(--admin-muted)' }}>Peso (0-350 kg)</label>
                             <input
                               type="number"
+                              min="0"
+                              max="350"
+                              step="any"
                               className="input-modal"
                               style={{ minHeight: '32px', padding: '4px 8px', marginBottom: 0 }}
                               value={ej.peso}
+                              onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                               onChange={(e) => actualizarMetricaRutinaDraft(index, 'peso', e.target.value)}
                             />
                           </div>
@@ -1696,6 +2078,7 @@ function AdminDashboard({ vistaInicial = 'home' }) {
                 <button
                   type="button"
                   className="btn-cancelar"
+                  disabled={guardando}
                   onClick={() => {
                     setModalCrearRutina(false)
                     setRutinaEditando(null)
@@ -1740,6 +2123,13 @@ function AdminDashboard({ vistaInicial = 'home' }) {
         <Toast
           msg={toast.msg}
           tipo={toast.tipo}
+        />
+
+        <ModalAlerta
+          isOpen={alertaModal.isOpen}
+          titulo={alertaModal.titulo}
+          mensaje={alertaModal.mensaje}
+          onClose={() => setAlertaModal({ isOpen: false, titulo: '', mensaje: '' })}
         />
 
       </div>
